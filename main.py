@@ -102,16 +102,16 @@ def main():
                 waktu_tunggu = random.uniform(waktu_kirim_min, waktu_kirim_max)
                 log_message("info", f"Token A mengirim pesan: '{pesan}' (Waktu tunggu: {waktu_tunggu:.2f} detik)")
                 time.sleep(waktu_tunggu)
-                log_message("info", f"Detik: {time.time()}")
                 
-                # Token B membalas setelah beberapa detik
+                # Token B membalas setelah waktu tunggu pendek
                 time.sleep(random.uniform(waktu_balas_min, waktu_balas_max))  # Tunggu sebelum Token B membalas
                 pesan_b = dialog_list[turn + 1]
                 message_id_b = kirim_pesan(channel_id, nama_b, token_b, pesan_b, message_reference=message_id_a)
-                waktu_tunggu = random.uniform(waktu_kirim_min, waktu_kirim_max)
-                log_message("info", f"Token B mengirim pesan: '{pesan_b}' (Waktu tunggu: {waktu_tunggu:.2f} detik)")
-                time.sleep(waktu_tunggu)
-                log_message("info", f"Detik: {time.time()}")
+                log_message("info", f"Token B mengirim pesan: '{pesan_b}' (Waktu tunggu: 2 detik)")
+
+                # Waktu tunggu untuk Token A lebih lama setelah balasan dari Token B
+                time.sleep(random.uniform(waktu_kirim_min, waktu_kirim_max))  # Waktu tunggu lebih lama untuk Token A
+                log_message("info", f"Token A membalas setelah waktu tunggu lebih lama.")
                 
             else:  # Token A membalas setelah Token B
                 pesan_a = dialog_list[turn]
@@ -119,17 +119,17 @@ def main():
                 waktu_tunggu = random.uniform(waktu_kirim_min, waktu_kirim_max)
                 log_message("info", f"Token A mengirim pesan: '{pesan_a}' (Waktu tunggu: {waktu_tunggu:.2f} detik)")
                 time.sleep(waktu_tunggu)
-                log_message("info", f"Detik: {time.time()}")
-                
-                # Token B membalas setelah beberapa detik
+
+                # Token B membalas setelah waktu tunggu pendek
                 time.sleep(random.uniform(waktu_balas_min, waktu_balas_max))  # Tunggu sebelum Token B membalas
                 pesan_b = dialog_list[turn + 1]
                 message_id_b = kirim_pesan(channel_id, nama_b, token_b, pesan_b, message_reference=message_id_a)
-                waktu_tunggu = random.uniform(waktu_kirim_min, waktu_kirim_max)
-                log_message("info", f"Token B mengirim pesan: '{pesan_b}' (Waktu tunggu: {waktu_tunggu:.2f} detik)")
-                time.sleep(waktu_tunggu)
-                log_message("info", f"Detik: {time.time()}")
+                log_message("info", f"Token B mengirim pesan: '{pesan_b}' (Waktu tunggu: 2 detik)")
 
+                # Waktu tunggu untuk Token A lebih lama setelah balasan dari Token B
+                time.sleep(random.uniform(waktu_kirim_min, waktu_kirim_max))  # Waktu tunggu lebih lama untuk Token A
+                log_message("info", f"Token A membalas setelah waktu tunggu lebih lama.")
+                
             turn += 2
         except Exception as e:
             log_message("error", f"Terjadi kesalahan: {e}")
