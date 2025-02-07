@@ -64,15 +64,15 @@ def main():
         if not channel_id.isdigit():
             raise ValueError("Channel ID harus berupa angka.")
 
-        waktu_kirim_min = float(input("Set Waktu Kirim Pesan Minimal (detik): "))
-        waktu_kirim_max = float(input("Set Waktu Kirim Pesan Maksimal (detik): "))
         waktu_balas_min = float(input("Set Waktu Balas Minimal (detik): "))
         waktu_balas_max = float(input("Set Waktu Balas Maksimal (detik): "))
+        waktu_tunggu_min = float(input("Set Waktu Tunggu Minimal Sebelum A Kirim Lagi (detik): "))
+        waktu_tunggu_max = float(input("Set Waktu Tunggu Maksimal Sebelum A Kirim Lagi (detik): "))
 
-        if waktu_kirim_min < 1 or waktu_kirim_max < waktu_kirim_min:
-            raise ValueError("Waktu kirim tidak valid.")
         if waktu_balas_min < 1 or waktu_balas_max < waktu_balas_min:
             raise ValueError("Waktu balas tidak valid.")
+        if waktu_tunggu_min < 1 or waktu_tunggu_max < waktu_tunggu_min:
+            raise ValueError("Waktu tunggu tidak valid.")
 
     except FileNotFoundError as e:
         log_message("error", f"File tidak ditemukan: {e}")
@@ -90,26 +90,45 @@ def main():
     nama_a, token_a = token_a
     nama_b, token_b = token_b
 
-    message_id_a = None
-    message_id_b = None
+    message_id = None
 
-    for turn, pesan in enumerate(dialog_list):
+    for i in range(0, len(dialog_list), 2):  # Loop dalam pasangan (A -> B -> A -> B)
         try:
-            if turn % 2 == 0:
-                # A mengirim pesan dulu
-                message_id_a = kirim_pesan(channel_id, nama_a, token_a, pesan, message_reference=message_id_b)
-                if message_id_a:
-                    waktu_tunggu = random.uniform(waktu_kirim_min, waktu_kirim_max)
-                    log_message("info", f"Menunggu {waktu_tunggu:.2f} detik sebelum balasan...")
-                    time.sleep(waktu_tunggu)  # Tunggu sebelum giliran berikutnya
-            else:
-                # Tunggu waktu balasan sebelum B membalas
+            if i >= len(dialog_list):
+                break
+
+            # 1. Bot A mengirim pesan pertama
+            message_id = kirim_pesan(channel_id, nama_a, token_a, dialog_list[i])
+            if message_id:
                 waktu_balas = random.uniform(waktu_balas_min, waktu_balas_max)
-                log_message("info", f"Menunggu {waktu_balas:.2f} detik sebelum balasan dari {nama_b}...")
+                log_message("info", f"Menunggu {waktu_balas:.2f} detik sebelum balasan dari Bot B...")
                 time.sleep(waktu_balas)
 
-                # B membalas pesan A
-                message_id_b = kirim_pesan(channel_id, nama_b, token_b, pesan, message_reference=message_id_a)
+            if i + 1 >= len(dialog_list):
+                break
+
+            # 2. Bot B membalas menggunakan Token A (sebagai reply)
+            message_id = kirim_pesan(channel_id, nama_a, token_a, dialog_list[i + 1], message_reference=message_id)
+            if message_id:
+                waktu_tunggu = random.uniform(waktu_tunggu_min, waktu_tunggu_max)
+                log_message("info", f"Menunggu {waktu_tunggu:.2f} detik sebelum Bot A mengirim pesan lagi...")
+                time.sleep(waktu_tunggu)
+
+            if i + 2 >= len(dialog_list):
+                break
+
+            # 3. Bot A mengirim pesan berikutnya
+            message_id = kirim_pesan(channel_id, nama_a, token_a, dialog_list[i + 2], message_reference=message_id)
+            if message_id:
+                waktu_balas = random.uniform(waktu_balas_min, waktu_balas_max)
+                log_message("info", f"Menunggu {waktu_balas:.2f} detik sebelum balasan dari Bot B...")
+                time.sleep(waktu_balas)
+
+            if i + 3 >= len(dialog_list):
+                break
+
+            # 4. Bot B membalas menggunakan Token B
+            message_id = kirim_pesan(channel_id, nama_b, token_b, dialog_list[i + 3], message_reference=message_id)
 
         except Exception as e:
             log_message("error", f"Terjadi kesalahan: {e}")
