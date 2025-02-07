@@ -9,16 +9,19 @@ logging.basicConfig(filename="activity.log", level=logging.INFO,
                     format="%(asctime)s - %(levelname)s - %(message)s")
 
 def log_message(level, message):
-    """Log pesan ke file dan konsol."""
+    """Log pesan ke file dan konsol dengan waktu."""
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())  # Format waktu
+    message_with_time = f"[{timestamp}] {message}"
+    
     if level == "info":
-        logging.info(message)
-        print(Fore.GREEN + message + Style.RESET_ALL)
+        logging.info(message_with_time)
+        print(Fore.GREEN + message_with_time + Style.RESET_ALL)
     elif level == "warning":
-        logging.warning(message)
-        print(Fore.YELLOW + message + Style.RESET_ALL)
+        logging.warning(message_with_time)
+        print(Fore.YELLOW + message_with_time + Style.RESET_ALL)
     elif level == "error":
-        logging.error(message)
-        print(Fore.RED + message + Style.RESET_ALL)
+        logging.error(message_with_time)
+        print(Fore.RED + message_with_time + Style.RESET_ALL)
 
 def kirim_pesan(channel_id, nama_token, token, pesan, message_reference=None):
     """Mengirim pesan ke channel tertentu menggunakan token, dengan reference jika ada."""
