@@ -95,25 +95,32 @@ def main():
 
     while turn < len(dialog_list):
         try:
-            if turn % 2 == 0:  # Giliran Bot A untuk mengirim pesan dan membalas
-                # Mengirim pesan dari Bot A
+            if turn % 2 == 0:  # Giliran Bot A untuk mengirim pesan
                 message_id = kirim_pesan(channel_id, nama_a, token_a, dialog_list[turn])
                 waktu_balas = random.uniform(waktu_balas_min, waktu_balas_max)
-                log_message("info", f"Bot A mengirim pesan: {dialog_list[turn]} - Menunggu {waktu_balas:.2f} detik sebelum balasan...")
+                log_message("info", f"Bot A mengirim pesan: {dialog_list[turn]} - Menunggu {waktu_balas:.2f} detik sebelum balasan dari Bot B...")
                 time.sleep(waktu_balas)
 
-                # Bot A membalas setelah menunggu
-                if turn + 1 < len(dialog_list):  # Pastikan ada pesan balasan
-                    kirim_pesan(channel_id, nama_a, token_a, dialog_list[turn + 1], message_reference=message_id)
-                    log_message("info", f"Bot A membalas: {dialog_list[turn + 1]}")
+                # Token B membalas pesan Bot A
+                if turn + 1 < len(dialog_list):  # Pastikan ada pesan balasan untuk token B
+                    message_id = kirim_pesan(channel_id, nama_b, token_b, dialog_list[turn + 1], message_reference=message_id)
+                    log_message("info", f"Bot B membalas: {dialog_list[turn + 1]}")
                 waktu_tunggu = random.uniform(waktu_tunggu_min, waktu_tunggu_max)
-                log_message("info", f"Menunggu {waktu_tunggu:.2f} detik sebelum Bot B mengirim pesan...")
+                log_message("info", f"Menunggu {waktu_tunggu:.2f} detik sebelum Bot A mengirim pesan lagi...")
                 time.sleep(waktu_tunggu)
 
             else:  # Giliran Bot B untuk membalas
                 message_id = kirim_pesan(channel_id, nama_b, token_b, dialog_list[turn], message_reference=message_id)
+                waktu_balas = random.uniform(waktu_balas_min, waktu_balas_max)
+                log_message("info", f"Bot B mengirim pesan: {dialog_list[turn]} - Menunggu {waktu_balas:.2f} detik sebelum balasan dari Bot A...")
+                time.sleep(waktu_balas)
+
+                # Token A membalas pesan Bot B
+                if turn + 1 < len(dialog_list):  # Pastikan ada pesan balasan untuk token A
+                    message_id = kirim_pesan(channel_id, nama_a, token_a, dialog_list[turn + 1], message_reference=message_id)
+                    log_message("info", f"Bot A membalas: {dialog_list[turn + 1]}")
                 waktu_tunggu = random.uniform(waktu_tunggu_min, waktu_tunggu_max)
-                log_message("info", f"Bot B mengirim pesan: {dialog_list[turn]} - Menunggu {waktu_tunggu:.2f} detik sebelum giliran Bot A...")
+                log_message("info", f"Menunggu {waktu_tunggu:.2f} detik sebelum Bot B mengirim pesan lagi...")
                 time.sleep(waktu_tunggu)
 
             turn += 1  # Pindah ke giliran berikutnya
