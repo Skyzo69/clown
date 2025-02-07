@@ -9,19 +9,29 @@ logging.basicConfig(filename="activity.log", level=logging.INFO,
                     format="%(asctime)s - %(levelname)s - %(message)s")
 
 def log_message(level, message):
-    """Log pesan ke file dan konsol dengan waktu."""
-    timestamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())  # Format waktu
-    message_with_time = f"[{timestamp}] {message}"
-    
+    """Log pesan ke file dan konsol."""
     if level == "info":
-        logging.info(message_with_time)
-        print(Fore.GREEN + message_with_time + Style.RESET_ALL)
+        logging.info(message)
+        print(Fore.GREEN + message + Style.RESET_ALL)
     elif level == "warning":
-        logging.warning(message_with_time)
-        print(Fore.YELLOW + message_with_time + Style.RESET_ALL)
+        logging.warning(message)
+        print(Fore.YELLOW + message + Style.RESET_ALL)
     elif level == "error":
-        logging.error(message_with_time)
-        print(Fore.RED + message_with_time + Style.RESET_ALL)
+        logging.error(message)
+        print(Fore.RED + message + Style.RESET_ALL)
+
+def mengetik(channel_id, token):
+    """Mengirimkan typing indicator ke channel."""
+    headers = {'Authorization': token}
+    try:
+        response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/typing",
+                                 headers=headers)
+        if response.status_code == 200:
+            log_message("info", "Typing indicator terkirim.")
+        else:
+            log_message("error", f"Gagal mengirim typing indicator: {response.status_code}")
+    except requests.exceptions.RequestException as e:
+        log_message("error", f"Error saat mengirim typing indicator: {e}")
 
 def kirim_pesan(channel_id, nama_token, token, pesan, message_reference=None):
     """Mengirim pesan ke channel tertentu menggunakan token, dengan reference jika ada."""
@@ -32,6 +42,12 @@ def kirim_pesan(channel_id, nama_token, token, pesan, message_reference=None):
         payload['message_reference'] = {'message_id': message_reference}
 
     try:
+        # Kirim typing indicator untuk Token A atau B
+        mengetik(channel_id, token)
+
+        # Tunggu sebentar agar typing terlihat
+        time.sleep(random.uniform(3, 6))  # Waktu typing acak antara 3 dan 6 detik
+
         send_response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/messages",
                                       json=payload, headers=headers)
 
@@ -102,6 +118,8 @@ def main():
             waktu_tunggu_a = random.uniform(waktu_tunggu_a_min, waktu_tunggu_a_max)
             time.sleep(waktu_tunggu_a)
             pesan_a = dialog_list[index]
+            # Kirim typing untuk Token A
+            mengetik(channel_id, token_a)
             last_message_id = kirim_pesan(channel_id, nama_a, token_a, pesan_a, message_reference=last_message_id)
             index += 1
 
@@ -112,6 +130,8 @@ def main():
             waktu_tunggu_b = random.uniform(waktu_tunggu_b_min, waktu_tunggu_b_max)
             time.sleep(waktu_tunggu_b)
             pesan_b = dialog_list[index]
+            # Kirim typing untuk Token B
+            mengetik(channel_id, token_b)
             last_message_id = kirim_pesan(channel_id, nama_b, token_b, pesan_b, message_reference=last_message_id)
             index += 1
 
