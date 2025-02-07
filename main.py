@@ -90,7 +90,8 @@ def main():
     nama_a, token_a = token_a
     nama_b, token_b = token_b
 
-    message_id = None
+    message_id_a = None
+    message_id_b = None
 
     for i in range(0, len(dialog_list), 2):  # Loop dalam pasangan (A -> B -> A -> B)
         try:
