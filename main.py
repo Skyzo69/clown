@@ -95,18 +95,28 @@ def main():
 
     while turn < len(dialog_list):
         try:
-            if turn % 2 == 0:  # Bot A mengirim pesan
+            if turn % 2 == 0:  # Giliran Bot A untuk mengirim pesan dan membalas
+                # Mengirim pesan dari Bot A
                 message_id = kirim_pesan(channel_id, nama_a, token_a, dialog_list[turn])
                 waktu_balas = random.uniform(waktu_balas_min, waktu_balas_max)
-                log_message("info", f"Menunggu {waktu_balas:.2f} detik sebelum balasan dari Bot B...")
+                log_message("info", f"Bot A mengirim pesan: {dialog_list[turn]} - Menunggu {waktu_balas:.2f} detik sebelum balasan...")
                 time.sleep(waktu_balas)
-            else:  # Bot B membalas
-                message_id = kirim_pesan(channel_id, nama_b, token_b, dialog_list[turn], message_reference=message_id)
+
+                # Bot A membalas setelah menunggu
+                if turn + 1 < len(dialog_list):  # Pastikan ada pesan balasan
+                    kirim_pesan(channel_id, nama_a, token_a, dialog_list[turn + 1], message_reference=message_id)
+                    log_message("info", f"Bot A membalas: {dialog_list[turn + 1]}")
                 waktu_tunggu = random.uniform(waktu_tunggu_min, waktu_tunggu_max)
-                log_message("info", f"Menunggu {waktu_tunggu:.2f} detik sebelum Bot A mengirim pesan lagi...")
+                log_message("info", f"Menunggu {waktu_tunggu:.2f} detik sebelum Bot B mengirim pesan...")
                 time.sleep(waktu_tunggu)
 
-            turn += 1  # Pindah giliran
+            else:  # Giliran Bot B untuk membalas
+                message_id = kirim_pesan(channel_id, nama_b, token_b, dialog_list[turn], message_reference=message_id)
+                waktu_tunggu = random.uniform(waktu_tunggu_min, waktu_tunggu_max)
+                log_message("info", f"Bot B mengirim pesan: {dialog_list[turn]} - Menunggu {waktu_tunggu:.2f} detik sebelum giliran Bot A...")
+                time.sleep(waktu_tunggu)
+
+            turn += 1  # Pindah ke giliran berikutnya
 
         except Exception as e:
             log_message("error", f"Terjadi kesalahan: {e}")
