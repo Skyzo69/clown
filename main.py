@@ -3,22 +3,29 @@ import logging
 import requests
 import random  # Import random untuk membuat waktu tunggu acak
 from colorama import Fore, Style
+from datetime import datetime  # Untuk mendapatkan waktu saat ini
 
 # Konfigurasi logging ke file
 logging.basicConfig(filename="activity.log", level=logging.INFO,
                     format="%(asctime)s - %(levelname)s - %(message)s")
 
+def get_current_time():
+    """Mengembalikan waktu saat ini dalam format HH:MM:SS."""
+    return datetime.now().strftime("%H:%M:%S")
+
 def log_message(level, message):
-    """Log pesan ke file dan konsol."""
+    """Log pesan ke file dan konsol dengan waktu."""
+    current_time = get_current_time()  # Mendapatkan waktu saat ini
+    full_message = f"[{current_time}] {message}"  # Menambahkan waktu ke pesan
     if level == "info":
-        logging.info(message)
-        print(Fore.GREEN + message + Style.RESET_ALL)
+        logging.info(full_message)
+        print(Fore.GREEN + full_message + Style.RESET_ALL)
     elif level == "warning":
-        logging.warning(message)
-        print(Fore.YELLOW + message + Style.RESET_ALL)
+        logging.warning(full_message)
+        print(Fore.YELLOW + full_message + Style.RESET_ALL)
     elif level == "error":
-        logging.error(message)
-        print(Fore.RED + message + Style.RESET_ALL)
+        logging.error(full_message)
+        print(Fore.RED + full_message + Style.RESET_ALL)
 
 def mengetik(channel_id, token):
     """Mengirimkan typing indicator ke channel."""
@@ -33,6 +40,17 @@ def mengetik(channel_id, token):
     except requests.exceptions.RequestException as e:
         log_message("error", f"Error saat mengirim typing indicator: {e}")
 
+def ketik_dikonsol(nama_token):
+    """Menampilkan waktu mengetik di konsol."""
+    start_time = get_current_time()
+    log_message("info", f"[{nama_token}] Mulai mengetik pada {start_time}...")
+    
+    # Simulasi typing dengan delay acak antara 3 hingga 6 detik
+    time.sleep(random.uniform(3, 6))
+
+    end_time = get_current_time()
+    log_message("info", f"[{nama_token}] Selesai mengetik pada {end_time}.")
+
 def kirim_pesan(channel_id, nama_token, token, pesan, message_reference=None):
     """Mengirim pesan ke channel tertentu menggunakan token, dengan reference jika ada."""
     headers = {'Authorization': token}
@@ -42,12 +60,13 @@ def kirim_pesan(channel_id, nama_token, token, pesan, message_reference=None):
         payload['message_reference'] = {'message_id': message_reference}
 
     try:
-        # Kirim typing indicator untuk Token A atau B
+        # Kirim typing indicator terlebih dahulu
         mengetik(channel_id, token)
+        
+        # Menampilkan typing di konsol
+        ketik_dikonsol(nama_token)
 
-        # Tunggu sebentar agar typing terlihat
-        time.sleep(random.uniform(3, 6))  # Waktu typing acak antara 3 dan 6 detik
-
+        # Kirim pesan setelah mengetik
         send_response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/messages",
                                       json=payload, headers=headers)
 
@@ -118,8 +137,6 @@ def main():
             waktu_tunggu_a = random.uniform(waktu_tunggu_a_min, waktu_tunggu_a_max)
             time.sleep(waktu_tunggu_a)
             pesan_a = dialog_list[index]
-            # Kirim typing untuk Token A
-            mengetik(channel_id, token_a)
             last_message_id = kirim_pesan(channel_id, nama_a, token_a, pesan_a, message_reference=last_message_id)
             index += 1
 
@@ -130,8 +147,6 @@ def main():
             waktu_tunggu_b = random.uniform(waktu_tunggu_b_min, waktu_tunggu_b_max)
             time.sleep(waktu_tunggu_b)
             pesan_b = dialog_list[index]
-            # Kirim typing untuk Token B
-            mengetik(channel_id, token_b)
             last_message_id = kirim_pesan(channel_id, nama_b, token_b, pesan_b, message_reference=last_message_id)
             index += 1
 
