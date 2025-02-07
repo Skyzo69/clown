@@ -21,10 +21,10 @@ def log_message(level, message):
         print(Fore.RED + message + Style.RESET_ALL)
 
 def kirim_pesan(channel_id, nama_token, token, pesan, message_reference=None):
-    """Mengirim pesan ke channel tertentu menggunakan token, dengan reference jika ada."""
+    """Mengirim pesan ke channel tertentu menggunakan token."""
     headers = {'Authorization': token}
     payload = {'content': pesan}
-
+    
     if message_reference:
         payload['message_reference'] = {'message_id': message_reference}
 
@@ -90,46 +90,23 @@ def main():
     nama_a, token_a = token_a
     nama_b, token_b = token_b
 
-    message_id_a = None
-    message_id_b = None
+    turn = 0  # Menentukan giliran siapa yang berbicara
+    message_id = None
 
-    for i in range(0, len(dialog_list), 2):  # Loop dalam pasangan (A -> B -> A -> B)
+    while turn < len(dialog_list):
         try:
-            if i >= len(dialog_list):
-                break
-
-            # 1. Bot A mengirim pesan pertama
-            message_id = kirim_pesan(channel_id, nama_a, token_a, dialog_list[i])
-            if message_id:
+            if turn % 2 == 0:  # Bot A mengirim pesan
+                message_id = kirim_pesan(channel_id, nama_a, token_a, dialog_list[turn])
                 waktu_balas = random.uniform(waktu_balas_min, waktu_balas_max)
                 log_message("info", f"Menunggu {waktu_balas:.2f} detik sebelum balasan dari Bot B...")
                 time.sleep(waktu_balas)
-
-            if i + 1 >= len(dialog_list):
-                break
-
-            # 2. Bot B membalas menggunakan Token A (sebagai reply)
-            message_id = kirim_pesan(channel_id, nama_a, token_a, dialog_list[i + 1], message_reference=message_id)
-            if message_id:
+            else:  # Bot B membalas
+                message_id = kirim_pesan(channel_id, nama_b, token_b, dialog_list[turn], message_reference=message_id)
                 waktu_tunggu = random.uniform(waktu_tunggu_min, waktu_tunggu_max)
                 log_message("info", f"Menunggu {waktu_tunggu:.2f} detik sebelum Bot A mengirim pesan lagi...")
                 time.sleep(waktu_tunggu)
 
-            if i + 2 >= len(dialog_list):
-                break
-
-            # 3. Bot A mengirim pesan berikutnya
-            message_id = kirim_pesan(channel_id, nama_a, token_a, dialog_list[i + 2], message_reference=message_id)
-            if message_id:
-                waktu_balas = random.uniform(waktu_balas_min, waktu_balas_max)
-                log_message("info", f"Menunggu {waktu_balas:.2f} detik sebelum balasan dari Bot B...")
-                time.sleep(waktu_balas)
-
-            if i + 3 >= len(dialog_list):
-                break
-
-            # 4. Bot B membalas menggunakan Token B
-            message_id = kirim_pesan(channel_id, nama_b, token_b, dialog_list[i + 3], message_reference=message_id)
+            turn += 1  # Pindah giliran
 
         except Exception as e:
             log_message("error", f"Terjadi kesalahan: {e}")
