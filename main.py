@@ -34,7 +34,7 @@ def kirim_pesan(channel_id, nama_token, token, pesan, message_reference=None):
 
         if send_response.status_code == 200:
             message_id = send_response.json().get('id')
-            log_message("info", f"[{nama_token}] Pesan dikirim: '{pesan}'")
+            log_message("info", f"[{nama_token}] Pesan dikirim: '{pesan}' (Message ID: {message_id})")
             return message_id
         elif send_response.status_code == 429:
             retry_after = send_response.json().get("retry_after", 1)
@@ -90,38 +90,29 @@ def main():
     nama_a, token_a = token_a
     nama_b, token_b = token_b
 
+    last_message_id_a = None
+    last_message_id_b = None
     turn = 0
-    message_id_a = None  # Menyimpan message_id Token A
-    message_id_b = None  # Menyimpan message_id Token B
 
     while True:
         try:
-            # Token A mengirim pesan pertama dengan jeda acak lama
-            waktu_tunggu_a = random.uniform(waktu_tunggu_a_min, waktu_tunggu_a_max)
-            log_message("info", f"Token A menunggu {waktu_tunggu_a:.2f} detik sebelum mengirim pesan pertama...")
-            time.sleep(waktu_tunggu_a)
-                
-            pesan_a = dialog_list[turn % len(dialog_list)]
-            message_id_a = kirim_pesan(channel_id, nama_a, token_a, pesan_a)  # Simpan ID pesan Token A
-            turn += 1
+            if turn % 2 == 0:  # Token A berbicara dulu
+                waktu_tunggu_a = random.uniform(waktu_tunggu_a_min, waktu_tunggu_a_max)
+                log_message("info", f"Token A menunggu {waktu_tunggu_a:.2f} detik sebelum mengirim pesan...")
+                time.sleep(waktu_tunggu_a)
 
-            # Token B membalas Token A
-            waktu_tunggu_b = random.uniform(waktu_tunggu_b_min, waktu_tunggu_b_max)
-            log_message("info", f"Token B menunggu {waktu_tunggu_b:.2f} detik sebelum membalas...")
-            time.sleep(waktu_tunggu_b)
-            
-            pesan_b = dialog_list[turn % len(dialog_list)]
-            message_id_b = kirim_pesan(channel_id, nama_b, token_b, pesan_b, message_reference=message_id_a)  # Balas ke Token A
-            turn += 1
+                pesan_a = dialog_list[turn % len(dialog_list)]
+                last_message_id_a = kirim_pesan(channel_id, nama_a, token_a, pesan_a, message_reference=last_message_id_b)
+                turn += 1
 
-            # Token A membalas Token B
-            waktu_tunggu_a = random.uniform(waktu_tunggu_a_min, waktu_tunggu_a_max)
-            log_message("info", f"Token A menunggu {waktu_tunggu_a:.2f} detik sebelum membalas kembali...")
-            time.sleep(waktu_tunggu_a)
+            else:  # Token B membalas
+                waktu_tunggu_b = random.uniform(waktu_tunggu_b_min, waktu_tunggu_b_max)
+                log_message("info", f"Token B menunggu {waktu_tunggu_b:.2f} detik sebelum membalas...")
+                time.sleep(waktu_tunggu_b)
 
-            pesan_a = dialog_list[turn % len(dialog_list)]
-            message_id_a = kirim_pesan(channel_id, nama_a, token_a, pesan_a, message_reference=message_id_b)  # Balas ke Token B
-            turn += 1
+                pesan_b = dialog_list[turn % len(dialog_list)]
+                last_message_id_b = kirim_pesan(channel_id, nama_b, token_b, pesan_b, message_reference=last_message_id_a)
+                turn += 1
 
         except Exception as e:
             log_message("error", f"Terjadi kesalahan: {e}")
