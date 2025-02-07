@@ -24,25 +24,23 @@ def kirim_pesan(channel_id, nama_token, token, pesan, message_reference=None):
     """Mengirim pesan ke channel tertentu menggunakan token, dengan reference jika ada."""
     headers = {'Authorization': token}
     payload = {'content': pesan}
-    
-    # Jika ada message_reference, tambahkan ke payload
+
     if message_reference:
         payload['message_reference'] = {'message_id': message_reference}
-    
+
     try:
         send_response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/messages",
                                       json=payload, headers=headers)
 
-        # Cek status kode dari respons
         if send_response.status_code == 200:
             message_id = send_response.json().get('id')
             log_message("info", f"Token {nama_token} ({token[:10]}...): Pesan dikirim: {pesan}")
-            return message_id  # Mengembalikan message_id yang baru saja dikirim
+            return message_id
         elif send_response.status_code == 429:
             retry_after = send_response.json().get("retry_after", 1)
-            log_message("warning", f"Token {nama_token} ({token[:10]}...): Rate limit terkena. Tunggu selama {retry_after:.2f} detik.")
-            time.sleep(retry_after)  # Tunggu sesuai waktu yang disarankan
-            return kirim_pesan(channel_id, nama_token, token, pesan, message_reference)  # Coba kirim ulang
+            log_message("warning", f"Token {nama_token} ({token[:10]}...): Rate limit terkena. Tunggu {retry_after:.2f} detik.")
+            time.sleep(retry_after)
+            return kirim_pesan(channel_id, nama_token, token, pesan, message_reference)
         else:
             log_message("error", f"Token {nama_token} ({token[:10]}...): Gagal mengirim pesan: {send_response.status_code}")
             return None
@@ -52,24 +50,20 @@ def kirim_pesan(channel_id, nama_token, token, pesan, message_reference=None):
 
 def main():
     try:
-        # Baca file dialog
         with open("dialog.txt", "r", encoding="utf-8") as f:
             dialog_list = [line.strip() for line in f.readlines()]
         if not dialog_list:
             raise ValueError("File dialog.txt kosong.")
 
-        # Baca file token dan nama
         with open("token.txt", "r") as f:
-            tokens = [line.strip().split(":") for line in f.readlines()]  # Format: nama_token:token
+            tokens = [line.strip().split(":") for line in f.readlines()]
         if len(tokens) < 2:
             raise ValueError("File token harus berisi minimal 2 akun.")
 
-        # Input ID channel
         channel_id = input("Masukkan ID channel: ").strip()
         if not channel_id.isdigit():
             raise ValueError("Channel ID harus berupa angka.")
 
-        # Input waktu interval
         waktu_kirim_min = float(input("Set Waktu Kirim Pesan Minimal (detik): "))
         waktu_kirim_max = float(input("Set Waktu Kirim Pesan Maksimal (detik): "))
         waktu_balas_min = float(input("Set Waktu Balas Minimal (detik): "))
@@ -92,38 +86,30 @@ def main():
 
     log_message("info", "Memulai percakapan otomatis...")
 
-    token_a, token_b = tokens[:2]  # Ambil 2 token pertama
+    token_a, token_b = tokens[:2]
     nama_a, token_a = token_a
     nama_b, token_b = token_b
 
-    turn = 0  # Menentukan giliran siapa yang bicara
-    message_id_a = None  # Menyimpan message ID yang terakhir dikirim oleh A
-    message_id_b = None  # Menyimpan message ID yang terakhir dikirim oleh B
+    turn = 0
+    message_id_a = None
+    message_id_b = None
 
-    while turn < len(dialog_list):  # Perulangan berdasarkan jumlah pesan di dialog.txt
+    while turn < len(dialog_list):
         try:
-            # Pilih pesan berdasarkan giliran
-            pesan = dialog_list[turn]
-            mention = f"<@{nama_b}>" if turn % 2 == 0 else f"<@{nama_a}>"
+            pesan = dialog_list[turn]  # Tidak ada mention
 
-            if turn % 2 == 0:  # A mengirim pesan
-                pesan = mention + " " + pesan
-                message_id_a = kirim_pesan(channel_id, nama_a, token_a, pesan, message_reference=message_id_b)
-                if not message_id_a:
-                    log_message("error", "Gagal mengirim pesan dari A.")
-                    break
-                waktu_tunggu = random.uniform(waktu_kirim_min, waktu_kirim_max)
-            else:  # B mengirim pesan
+            if turn % 2 == 1:
                 time.sleep(random.uniform(waktu_balas_min, waktu_balas_max))  # Tunggu sebelum membalas
-                pesan = mention + " " + pesan
+
+            if turn % 2 == 0:
+                message_id_a = kirim_pesan(channel_id, nama_a, token_a, pesan, message_reference=message_id_b)
+                waktu_tunggu = random.uniform(waktu_kirim_min, waktu_kirim_max)
+            else:
                 message_id_b = kirim_pesan(channel_id, nama_b, token_b, pesan, message_reference=message_id_a)
-                if not message_id_b:
-                    log_message("error", "Gagal mengirim pesan dari B.")
-                    break
                 waktu_tunggu = random.uniform(waktu_kirim_min, waktu_kirim_max)
 
             turn += 1
-            time.sleep(waktu_tunggu)  # Tunggu sebelum pesan berikutnya dikirim
+            time.sleep(waktu_tunggu)
 
         except Exception as e:
             log_message("error", f"Terjadi kesalahan: {e}")
@@ -131,6 +117,5 @@ def main():
 
     log_message("info", "Selesai.")
 
-# Jalankan program utama
 if __name__ == "__main__":
     main()
