@@ -31,12 +31,13 @@ def mengetik(channel_id, token):
     """Mengirimkan typing indicator ke channel."""
     headers = {'Authorization': token}
     try:
-        response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/typing",
-                                 headers=headers)
-        if response.status_code == 200:
-            log_message("info", "Typing indicator terkirim.")
+        response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/typing", headers=headers)
+        
+        # Jika response statusnya 200 atau 204, dianggap berhasil
+        if response.status_code == 200 or response.status_code == 204:
+            log_message("info", f"Typing indicator terkirim (Status: {response.status_code}).")
         else:
-            log_message("error", f"Gagal mengirim typing indicator: {response.status_code}")
+            log_message("warning", f"Gagal mengirim typing indicator: {response.status_code}")
     except requests.exceptions.RequestException as e:
         log_message("error", f"Error saat mengirim typing indicator: {e}")
 
