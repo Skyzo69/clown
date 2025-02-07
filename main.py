@@ -109,10 +109,8 @@ def main():
                 break  # Hentikan jika semua dialog sudah dipakai
 
             pesan = dialog_list[turn]
-            mention = f"<@{nama_b}>" if turn % 2 == 0 else f"<@{nama_a}>"
 
             if turn % 2 == 0:  # A mengirim pesan
-                pesan = mention + " " + pesan
                 message_id_a = kirim_pesan(channel_id, nama_a, token_a, pesan, message_reference=message_id_b)
                 if not message_id_a:
                     log_message("error", "Gagal mengirim pesan dari A.")
@@ -120,7 +118,6 @@ def main():
                 waktu_tunggu = random.uniform(waktu_kirim_min, waktu_kirim_max)
             else:  # B mengirim pesan
                 time.sleep(random.uniform(waktu_balas_min, waktu_balas_max))  # Tunggu sebelum membalas
-                pesan = mention + " " + pesan
                 message_id_b = kirim_pesan(channel_id, nama_b, token_b, pesan, message_reference=message_id_a)
                 if not message_id_b:
                     log_message("error", "Gagal mengirim pesan dari B.")
