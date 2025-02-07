@@ -1,7 +1,7 @@
-import random
 import time
 import logging
 import requests
+import random  # Import random untuk membuat waktu tunggu acak
 from colorama import Fore, Style
 
 # Konfigurasi logging ke file
@@ -64,15 +64,16 @@ def main():
         if not channel_id.isdigit():
             raise ValueError("Channel ID harus berupa angka.")
 
-        waktu_tunggu_a_min = float(input("Set Waktu Tunggu Token A (min detik): "))
-        waktu_tunggu_a_max = float(input("Set Waktu Tunggu Token A (max detik): "))
-        waktu_tunggu_b_min = float(input("Set Waktu Tunggu Token B (min detik): "))
-        waktu_tunggu_b_max = float(input("Set Waktu Tunggu Token B (max detik): "))
+        # Mengatur waktu tunggu minimal dan maksimal untuk Token A dan B
+        waktu_tunggu_a_min = float(input("Set Waktu Tunggu Token A Minimum (detik): "))
+        waktu_tunggu_a_max = float(input("Set Waktu Tunggu Token A Maksimum (detik): "))
+        waktu_tunggu_b_min = float(input("Set Waktu Tunggu Token B Minimum (detik): "))
+        waktu_tunggu_b_max = float(input("Set Waktu Tunggu Token B Maksimum (detik): "))
 
-        if waktu_tunggu_a_min < 1 or waktu_tunggu_a_max < waktu_tunggu_a_min:
-            raise ValueError("Waktu tunggu Token A tidak valid.")
-        if waktu_tunggu_b_min < 1 or waktu_tunggu_b_max < waktu_tunggu_b_min:
-            raise ValueError("Waktu tunggu Token B tidak valid.")
+        if waktu_tunggu_a_min < 1 or waktu_tunggu_b_min < 1 or waktu_tunggu_a_max < 1 or waktu_tunggu_b_max < 1:
+            raise ValueError("Waktu tunggu harus lebih dari 1 detik.")
+        if waktu_tunggu_a_min > waktu_tunggu_a_max or waktu_tunggu_b_min > waktu_tunggu_b_max:
+            raise ValueError("Waktu tunggu minimum tidak boleh lebih besar dari maksimum.")
 
     except FileNotFoundError as e:
         log_message("error", f"File tidak ditemukan: {e}")
@@ -86,39 +87,36 @@ def main():
 
     log_message("info", "Memulai percakapan otomatis...")
 
-    token_a, token_b = tokens[:2]
-    nama_a, token_a = token_a
-    nama_b, token_b = token_b
+    nama_a, token_a = tokens[0]
+    nama_b, token_b = tokens[1]
 
-    last_message_id_a = None
-    last_message_id_b = None
-    turn = 0
+    last_message_id = None
+    index = 0
 
-    while True:
+    while index < len(dialog_list):
         try:
-            if turn % 2 == 0:  # Token A berbicara dulu
-                waktu_tunggu_a = random.uniform(waktu_tunggu_a_min, waktu_tunggu_a_max)
-                log_message("info", f"Token A menunggu {waktu_tunggu_a:.2f} detik sebelum mengirim pesan...")
-                time.sleep(waktu_tunggu_a)
+            # Token A mengirim pesan pertama kali atau membalas Token B dengan waktu acak
+            waktu_tunggu_a = random.uniform(waktu_tunggu_a_min, waktu_tunggu_a_max)
+            time.sleep(waktu_tunggu_a)
+            pesan_a = dialog_list[index]
+            last_message_id = kirim_pesan(channel_id, nama_a, token_a, pesan_a, message_reference=last_message_id)
+            index += 1
 
-                pesan_a = dialog_list[turn % len(dialog_list)]
-                last_message_id_a = kirim_pesan(channel_id, nama_a, token_a, pesan_a, message_reference=last_message_id_b)
-                turn += 1
+            if index >= len(dialog_list):
+                break
 
-            else:  # Token B membalas
-                waktu_tunggu_b = random.uniform(waktu_tunggu_b_min, waktu_tunggu_b_max)
-                log_message("info", f"Token B menunggu {waktu_tunggu_b:.2f} detik sebelum membalas...")
-                time.sleep(waktu_tunggu_b)
-
-                pesan_b = dialog_list[turn % len(dialog_list)]
-                last_message_id_b = kirim_pesan(channel_id, nama_b, token_b, pesan_b, message_reference=last_message_id_a)
-                turn += 1
+            # Token B membalas Token A dengan waktu acak
+            waktu_tunggu_b = random.uniform(waktu_tunggu_b_min, waktu_tunggu_b_max)
+            time.sleep(waktu_tunggu_b)
+            pesan_b = dialog_list[index]
+            last_message_id = kirim_pesan(channel_id, nama_b, token_b, pesan_b, message_reference=last_message_id)
+            index += 1
 
         except Exception as e:
             log_message("error", f"Terjadi kesalahan: {e}")
             break
 
-    log_message("info", "Selesai.")
+    log_message("info", "Percakapan selesai.")
 
 if __name__ == "__main__":
     main()
