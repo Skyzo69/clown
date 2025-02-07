@@ -64,8 +64,10 @@ def main():
         if not channel_id.isdigit():
             raise ValueError("Channel ID harus berupa angka.")
 
-        waktu_tunggu_min = float(input("Set Waktu Tunggu (min detik): "))
-        waktu_tunggu_max = float(input("Set Waktu Tunggu (max detik): "))
+        waktu_tunggu_a_min = float(input("Set Waktu Tunggu Token A (min detik): "))
+        waktu_tunggu_a_max = float(input("Set Waktu Tunggu Token A (max detik): "))
+        waktu_tunggu_b_min = float(input("Set Waktu Tunggu Token B (min detik): "))
+        waktu_tunggu_b_max = float(input("Set Waktu Tunggu Token B (max detik): "))
 
         if waktu_tunggu_min < 1 or waktu_tunggu_max < waktu_tunggu_min:
             raise ValueError("Waktu tunggu tidak valid.")
