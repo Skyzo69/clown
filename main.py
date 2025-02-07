@@ -2,7 +2,6 @@ import random
 import time
 import logging
 import requests
-from collections import deque
 from colorama import Fore, Style
 
 # Konfigurasi logging ke file
@@ -22,10 +21,10 @@ def log_message(level, message):
         print(Fore.RED + message + Style.RESET_ALL)
 
 def kirim_pesan(channel_id, nama_token, token, pesan, message_reference=None):
-    """Mengirim pesan ke channel tertentu menggunakan token."""
+    """Mengirim pesan ke channel tertentu menggunakan token, dengan reference jika ada."""
     headers = {'Authorization': token}
     payload = {'content': pesan}
-    
+
     if message_reference:
         payload['message_reference'] = {'message_id': message_reference}
 
@@ -52,7 +51,7 @@ def kirim_pesan(channel_id, nama_token, token, pesan, message_reference=None):
 def main():
     try:
         with open("dialog.txt", "r", encoding="utf-8") as f:
-            dialog_list = deque([line.strip() for line in f.readlines()])
+            dialog_list = [line.strip() for line in f.readlines()]
         if not dialog_list:
             raise ValueError("File dialog.txt kosong.")
 
@@ -65,9 +64,13 @@ def main():
         if not channel_id.isdigit():
             raise ValueError("Channel ID harus berupa angka.")
 
+        waktu_kirim_min = float(input("Set Waktu Kirim Pesan Minimal (detik): "))
+        waktu_kirim_max = float(input("Set Waktu Kirim Pesan Maksimal (detik): "))
         waktu_balas_min = float(input("Set Waktu Balas Minimal (detik): "))
         waktu_balas_max = float(input("Set Waktu Balas Maksimal (detik): "))
 
+        if waktu_kirim_min < 1 or waktu_kirim_max < waktu_kirim_min:
+            raise ValueError("Waktu kirim tidak valid.")
         if waktu_balas_min < 1 or waktu_balas_max < waktu_balas_min:
             raise ValueError("Waktu balas tidak valid.")
 
@@ -87,25 +90,47 @@ def main():
     nama_a, token_a = token_a
     nama_b, token_b = token_b
 
-    giliran_a = True  # Bot A memulai percakapan
-    message_id = None
+    turn = 0
+    message_id_a = None
+    message_id_b = None
 
-    while dialog_list:
+    while True:
         try:
-            if giliran_a:
-                nama, token = nama_a, token_a
-            else:
-                nama, token = nama_b, token_b
+            if turn % 2 == 0:  # Token A kirim pesan pertama
+                pesan = dialog_list[turn]  # Tidak ada mention
+                message_id_a = kirim_pesan(channel_id, nama_a, token_a, pesan, message_reference=message_id_b)
+                waktu_tunggu = random.uniform(waktu_kirim_min, waktu_kirim_max)
+                log_message("info", f"Token A mengirim pesan: '{pesan}' (Waktu tunggu: {waktu_tunggu:.2f} detik)")
+                time.sleep(waktu_tunggu)
+                log_message("info", f"Detik: {time.time()}")
+                
+                # Token B membalas setelah beberapa detik
+                time.sleep(random.uniform(waktu_balas_min, waktu_balas_max))  # Tunggu sebelum Token B membalas
+                pesan_b = dialog_list[turn + 1]
+                message_id_b = kirim_pesan(channel_id, nama_b, token_b, pesan_b, message_reference=message_id_a)
+                waktu_tunggu = random.uniform(waktu_kirim_min, waktu_kirim_max)
+                log_message("info", f"Token B mengirim pesan: '{pesan_b}' (Waktu tunggu: {waktu_tunggu:.2f} detik)")
+                time.sleep(waktu_tunggu)
+                log_message("info", f"Detik: {time.time()}")
+                
+            else:  # Token A membalas setelah Token B
+                pesan_a = dialog_list[turn]
+                message_id_a = kirim_pesan(channel_id, nama_a, token_a, pesan_a, message_reference=message_id_b)
+                waktu_tunggu = random.uniform(waktu_kirim_min, waktu_kirim_max)
+                log_message("info", f"Token A mengirim pesan: '{pesan_a}' (Waktu tunggu: {waktu_tunggu:.2f} detik)")
+                time.sleep(waktu_tunggu)
+                log_message("info", f"Detik: {time.time()}")
+                
+                # Token B membalas setelah beberapa detik
+                time.sleep(random.uniform(waktu_balas_min, waktu_balas_max))  # Tunggu sebelum Token B membalas
+                pesan_b = dialog_list[turn + 1]
+                message_id_b = kirim_pesan(channel_id, nama_b, token_b, pesan_b, message_reference=message_id_a)
+                waktu_tunggu = random.uniform(waktu_kirim_min, waktu_kirim_max)
+                log_message("info", f"Token B mengirim pesan: '{pesan_b}' (Waktu tunggu: {waktu_tunggu:.2f} detik)")
+                time.sleep(waktu_tunggu)
+                log_message("info", f"Detik: {time.time()}")
 
-            pesan = dialog_list.popleft()
-            message_id = kirim_pesan(channel_id, nama, token, pesan, message_reference=message_id)
-
-            waktu_balas = random.uniform(waktu_balas_min, waktu_balas_max)
-            log_message("info", f"Menunggu {waktu_balas:.2f} detik sebelum balasan...")
-            time.sleep(waktu_balas)
-
-            giliran_a = not giliran_a  # Ganti giliran
-
+            turn += 2
         except Exception as e:
             log_message("error", f"Terjadi kesalahan: {e}")
             break
