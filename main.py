@@ -91,8 +91,7 @@ def main():
     nama_b, token_b = token_b
 
     turn = 0
-    message_id_a = None
-    message_id_b = None
+    message_id = None
 
     while True:
         try:
@@ -102,7 +101,7 @@ def main():
             time.sleep(waktu_tunggu_a)
                 
             pesan_a = dialog_list[turn % len(dialog_list)]
-            message_id_a = kirim_pesan(channel_id, nama_a, token_a, pesan_a)
+            message_id = kirim_pesan(channel_id, nama_a, token_a, pesan_a)
             turn += 1
 
             # Token B membalas dengan jeda acak pendek
@@ -111,7 +110,16 @@ def main():
             time.sleep(waktu_tunggu_b)
             
             pesan_b = dialog_list[turn % len(dialog_list)]
-            message_id_b = kirim_pesan(channel_id, nama_b, token_b, pesan_b, message_reference=message_id_a)
+            message_id = kirim_pesan(channel_id, nama_b, token_b, pesan_b, message_reference=message_id)
+            turn += 1
+
+            # Token A membalas balik Token B setelah waktu jeda lama lagi
+            waktu_tunggu_a = random.uniform(waktu_tunggu_a_min, waktu_tunggu_a_max)
+            log_message("info", f"Token A menunggu {waktu_tunggu_a:.2f} detik sebelum membalas kembali...")
+            time.sleep(waktu_tunggu_a)
+
+            pesan_a = dialog_list[turn % len(dialog_list)]
+            message_id = kirim_pesan(channel_id, nama_a, token_a, pesan_a, message_reference=message_id)
             turn += 1
 
         except Exception as e:
