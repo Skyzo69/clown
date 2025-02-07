@@ -34,15 +34,15 @@ def kirim_pesan(channel_id, nama_token, token, pesan, message_reference=None):
 
         if send_response.status_code == 200:
             message_id = send_response.json().get('id')
-            log_message("info", f"Token {nama_token} ({token[:10]}...): Pesan dikirim: {pesan}")
+            log_message("info", f"[{nama_token}] Pesan dikirim: '{pesan}'")
             return message_id
         elif send_response.status_code == 429:
             retry_after = send_response.json().get("retry_after", 1)
-            log_message("warning", f"Token {nama_token} ({token[:10]}...): Rate limit terkena. Tunggu {retry_after:.2f} detik.")
+            log_message("warning", f"[{nama_token}] Rate limit terkena. Tunggu {retry_after:.2f} detik.")
             time.sleep(retry_after)
             return kirim_pesan(channel_id, nama_token, token, pesan, message_reference)
         else:
-            log_message("error", f"Token {nama_token} ({token[:10]}...): Gagal mengirim pesan: {send_response.status_code}")
+            log_message("error", f"[{nama_token}] Gagal mengirim pesan: {send_response.status_code}")
             return None
     except requests.exceptions.RequestException as e:
         log_message("error", f"Error saat mengirim pesan: {e}")
@@ -64,15 +64,15 @@ def main():
         if not channel_id.isdigit():
             raise ValueError("Channel ID harus berupa angka.")
 
-        waktu_kirim_min = float(input("Set Waktu Kirim Pesan Minimal (detik): "))
-        waktu_kirim_max = float(input("Set Waktu Kirim Pesan Maksimal (detik): "))
-        waktu_balas_min = float(input("Set Waktu Balas Minimal (detik): "))
-        waktu_balas_max = float(input("Set Waktu Balas Maksimal (detik): "))
+        waktu_tunggu_a_min = float(input("Set Waktu Tunggu Token A (min detik): "))
+        waktu_tunggu_a_max = float(input("Set Waktu Tunggu Token A (max detik): "))
+        waktu_tunggu_b_min = float(input("Set Waktu Tunggu Token B (min detik): "))
+        waktu_tunggu_b_max = float(input("Set Waktu Tunggu Token B (max detik): "))
 
-        if waktu_kirim_min < 1 or waktu_kirim_max < waktu_kirim_min:
-            raise ValueError("Waktu kirim tidak valid.")
-        if waktu_balas_min < 1 or waktu_balas_max < waktu_balas_min:
-            raise ValueError("Waktu balas tidak valid.")
+        if waktu_tunggu_a_min < 1 or waktu_tunggu_a_max < waktu_tunggu_a_min:
+            raise ValueError("Waktu tunggu Token A tidak valid.")
+        if waktu_tunggu_b_min < 1 or waktu_tunggu_b_max < waktu_tunggu_b_min:
+            raise ValueError("Waktu tunggu Token B tidak valid.")
 
     except FileNotFoundError as e:
         log_message("error", f"File tidak ditemukan: {e}")
@@ -96,41 +96,24 @@ def main():
 
     while True:
         try:
-            if turn % 2 == 0:  # Token A kirim pesan pertama
-                pesan = dialog_list[turn]  # Tidak ada mention
-                message_id_a = kirim_pesan(channel_id, nama_a, token_a, pesan, message_reference=message_id_b)
-                waktu_tunggu = random.uniform(waktu_kirim_min, waktu_kirim_max)
-                log_message("info", f"Token A mengirim pesan: '{pesan}' (Waktu tunggu: {waktu_tunggu:.2f} detik)")
-                time.sleep(waktu_tunggu)
+            # Token A mengirim pesan pertama dengan jeda acak lama
+            waktu_tunggu_a = random.uniform(waktu_tunggu_a_min, waktu_tunggu_a_max)
+            log_message("info", f"Token A menunggu {waktu_tunggu_a:.2f} detik sebelum mengirim pesan pertama...")
+            time.sleep(waktu_tunggu_a)
                 
-                # Token B membalas setelah waktu tunggu pendek
-                time.sleep(random.uniform(waktu_balas_min, waktu_balas_max))  # Tunggu sebelum Token B membalas
-                pesan_b = dialog_list[turn + 1]
-                message_id_b = kirim_pesan(channel_id, nama_b, token_b, pesan_b, message_reference=message_id_a)
-                log_message("info", f"Token B mengirim pesan: '{pesan_b}' (Waktu tunggu: 2 detik)")
+            pesan_a = dialog_list[turn % len(dialog_list)]
+            message_id_a = kirim_pesan(channel_id, nama_a, token_a, pesan_a)
+            turn += 1
 
-                # Waktu tunggu untuk Token A lebih lama setelah balasan dari Token B
-                time.sleep(random.uniform(waktu_kirim_min, waktu_kirim_max))  # Waktu tunggu lebih lama untuk Token A
-                log_message("info", f"Token A membalas setelah waktu tunggu lebih lama.")
-                
-            else:  # Token A membalas setelah Token B
-                pesan_a = dialog_list[turn]
-                message_id_a = kirim_pesan(channel_id, nama_a, token_a, pesan_a, message_reference=message_id_b)
-                waktu_tunggu = random.uniform(waktu_kirim_min, waktu_kirim_max)
-                log_message("info", f"Token A mengirim pesan: '{pesan_a}' (Waktu tunggu: {waktu_tunggu:.2f} detik)")
-                time.sleep(waktu_tunggu)
+            # Token B membalas dengan jeda acak pendek
+            waktu_tunggu_b = random.uniform(waktu_tunggu_b_min, waktu_tunggu_b_max)
+            log_message("info", f"Token B menunggu {waktu_tunggu_b:.2f} detik sebelum membalas...")
+            time.sleep(waktu_tunggu_b)
+            
+            pesan_b = dialog_list[turn % len(dialog_list)]
+            message_id_b = kirim_pesan(channel_id, nama_b, token_b, pesan_b, message_reference=message_id_a)
+            turn += 1
 
-                # Token B membalas setelah waktu tunggu pendek
-                time.sleep(random.uniform(waktu_balas_min, waktu_balas_max))  # Tunggu sebelum Token B membalas
-                pesan_b = dialog_list[turn + 1]
-                message_id_b = kirim_pesan(channel_id, nama_b, token_b, pesan_b, message_reference=message_id_a)
-                log_message("info", f"Token B mengirim pesan: '{pesan_b}' (Waktu tunggu: 2 detik)")
-
-                # Waktu tunggu untuk Token A lebih lama setelah balasan dari Token B
-                time.sleep(random.uniform(waktu_kirim_min, waktu_kirim_max))  # Waktu tunggu lebih lama untuk Token A
-                log_message("info", f"Token A membalas setelah waktu tunggu lebih lama.")
-                
-            turn += 2
         except Exception as e:
             log_message("error", f"Terjadi kesalahan: {e}")
             break
