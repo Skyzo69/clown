@@ -90,26 +90,26 @@ def main():
     nama_a, token_a = token_a
     nama_b, token_b = token_b
 
-    turn = 0
     message_id_a = None
     message_id_b = None
 
-    while turn < len(dialog_list):
+    for turn, pesan in enumerate(dialog_list):
         try:
-            pesan = dialog_list[turn]  # Tidak ada mention
-
-            if turn % 2 == 1:
-                time.sleep(random.uniform(waktu_balas_min, waktu_balas_max))  # Tunggu sebelum membalas
-
             if turn % 2 == 0:
+                # A mengirim pesan dulu
                 message_id_a = kirim_pesan(channel_id, nama_a, token_a, pesan, message_reference=message_id_b)
-                waktu_tunggu = random.uniform(waktu_kirim_min, waktu_kirim_max)
+                if message_id_a:
+                    waktu_tunggu = random.uniform(waktu_kirim_min, waktu_kirim_max)
+                    log_message("info", f"Menunggu {waktu_tunggu:.2f} detik sebelum balasan...")
+                    time.sleep(waktu_tunggu)  # Tunggu sebelum giliran berikutnya
             else:
-                message_id_b = kirim_pesan(channel_id, nama_b, token_b, pesan, message_reference=message_id_a)
-                waktu_tunggu = random.uniform(waktu_kirim_min, waktu_kirim_max)
+                # Tunggu waktu balasan sebelum B membalas
+                waktu_balas = random.uniform(waktu_balas_min, waktu_balas_max)
+                log_message("info", f"Menunggu {waktu_balas:.2f} detik sebelum balasan dari {nama_b}...")
+                time.sleep(waktu_balas)
 
-            turn += 1
-            time.sleep(waktu_tunggu)
+                # B membalas pesan A
+                message_id_b = kirim_pesan(channel_id, nama_b, token_b, pesan, message_reference=message_id_a)
 
         except Exception as e:
             log_message("error", f"Terjadi kesalahan: {e}")
