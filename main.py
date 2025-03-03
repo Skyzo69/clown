@@ -1,9 +1,9 @@
 import time
 import logging
 import requests
-import random  # Import random untuk membuat waktu tunggu acak
+import random  
 from colorama import Fore, Style
-from datetime import datetime  # Untuk mendapatkan waktu saat ini
+from datetime import datetime  
 
 # Konfigurasi logging ke file
 logging.basicConfig(filename="activity.log", level=logging.INFO,
@@ -15,8 +15,8 @@ def get_current_time():
 
 def log_message(level, message):
     """Log pesan ke file dan konsol dengan waktu."""
-    current_time = get_current_time()  # Mendapatkan waktu saat ini
-    full_message = f"[{current_time}] {message}"  # Menambahkan waktu ke pesan
+    current_time = get_current_time()
+    full_message = f"[{current_time}] {message}"
     if level == "info":
         logging.info(full_message)
         print(Fore.GREEN + full_message + Style.RESET_ALL)
@@ -27,14 +27,27 @@ def log_message(level, message):
         logging.error(full_message)
         print(Fore.RED + full_message + Style.RESET_ALL)
 
+def tunggu_waktu_mulai(jam_mulai, menit_mulai):
+    """Menunggu hingga waktu yang ditentukan."""
+    while True:
+        sekarang = datetime.now()
+        jam_sekarang, menit_sekarang = sekarang.hour, sekarang.minute
+        
+        if jam_sekarang > jam_mulai or (jam_sekarang == jam_mulai and menit_sekarang >= menit_mulai):
+            log_message("info", "Waktu mulai tercapai. Memulai eksekusi...")
+            break
+
+        sisa_menit = (jam_mulai - jam_sekarang) * 60 + (menit_mulai - menit_sekarang)
+        log_message("info", f"Menunggu waktu mulai dalam {sisa_menit} menit...")
+        time.sleep(10)
+
 def mengetik(channel_id, token):
     """Mengirimkan typing indicator ke channel."""
     headers = {'Authorization': token}
     try:
         response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/typing", headers=headers)
         
-        # Jika response statusnya 200 atau 204, dianggap berhasil
-        if response.status_code == 200 or response.status_code == 204:
+        if response.status_code in [200, 204]:
             log_message("info", f"Typing indicator terkirim (Status: {response.status_code}).")
         else:
             log_message("warning", f"Gagal mengirim typing indicator: {response.status_code}")
@@ -46,14 +59,13 @@ def ketik_dikonsol(nama_token):
     start_time = get_current_time()
     log_message("info", f"[{nama_token}] Mulai mengetik pada {start_time}...")
     
-    # Simulasi typing dengan delay acak antara 3 hingga 6 detik
     time.sleep(random.uniform(3, 6))
 
     end_time = get_current_time()
     log_message("info", f"[{nama_token}] Selesai mengetik pada {end_time}.")
 
 def kirim_pesan(channel_id, nama_token, token, pesan, message_reference=None):
-    """Mengirim pesan ke channel tertentu menggunakan token, dengan reference jika ada."""
+    """Mengirim pesan ke channel tertentu."""
     headers = {'Authorization': token}
     payload = {'content': pesan}
 
@@ -61,13 +73,9 @@ def kirim_pesan(channel_id, nama_token, token, pesan, message_reference=None):
         payload['message_reference'] = {'message_id': message_reference}
 
     try:
-        # Kirim typing indicator terlebih dahulu
         mengetik(channel_id, token)
-        
-        # Menampilkan typing di konsol
         ketik_dikonsol(nama_token)
 
-        # Kirim pesan setelah mengetik
         send_response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/messages",
                                       json=payload, headers=headers)
 
@@ -89,6 +97,14 @@ def kirim_pesan(channel_id, nama_token, token, pesan, message_reference=None):
 
 def main():
     try:
+        jam_mulai = int(input("Masukkan jam mulai (0-23): "))
+        menit_mulai = int(input("Masukkan menit mulai (0-59): "))
+
+        if not (0 <= jam_mulai < 24 and 0 <= menit_mulai < 60):
+            raise ValueError("Jam dan menit harus dalam rentang yang benar.")
+
+        tunggu_waktu_mulai(jam_mulai, menit_mulai)
+
         with open("dialog.txt", "r", encoding="utf-8") as f:
             dialog_list = [line.strip() for line in f.readlines()]
         if not dialog_list:
@@ -103,13 +119,12 @@ def main():
         if not channel_id.isdigit():
             raise ValueError("Channel ID harus berupa angka.")
 
-        # Mengatur waktu tunggu minimal dan maksimal untuk Token A dan B
         waktu_tunggu_a_min = float(input("Set Waktu Tunggu Token A Minimum (detik): "))
         waktu_tunggu_a_max = float(input("Set Waktu Tunggu Token A Maksimum (detik): "))
         waktu_tunggu_b_min = float(input("Set Waktu Tunggu Token B Minimum (detik): "))
         waktu_tunggu_b_max = float(input("Set Waktu Tunggu Token B Maksimum (detik): "))
 
-        if waktu_tunggu_a_min < 1 or waktu_tunggu_b_min < 1 or waktu_tunggu_a_max < 1 or waktu_tunggu_b_max < 1:
+        if any(x < 1 for x in [waktu_tunggu_a_min, waktu_tunggu_a_max, waktu_tunggu_b_min, waktu_tunggu_b_max]):
             raise ValueError("Waktu tunggu harus lebih dari 1 detik.")
         if waktu_tunggu_a_min > waktu_tunggu_a_max or waktu_tunggu_b_min > waktu_tunggu_b_max:
             raise ValueError("Waktu tunggu minimum tidak boleh lebih besar dari maksimum.")
@@ -134,7 +149,6 @@ def main():
 
     while index < len(dialog_list):
         try:
-            # Token A mengirim pesan pertama kali atau membalas Token B dengan waktu acak
             waktu_tunggu_a = random.uniform(waktu_tunggu_a_min, waktu_tunggu_a_max)
             time.sleep(waktu_tunggu_a)
             pesan_a = dialog_list[index]
@@ -144,7 +158,6 @@ def main():
             if index >= len(dialog_list):
                 break
 
-            # Token B membalas Token A dengan waktu acak
             waktu_tunggu_b = random.uniform(waktu_tunggu_b_min, waktu_tunggu_b_max)
             time.sleep(waktu_tunggu_b)
             pesan_b = dialog_list[index]
