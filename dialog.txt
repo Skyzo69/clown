@@ -77,7 +77,6 @@
     {"text": "she gon be like 'wth is this'", "sender": 1, "reply_to": 0},
     {"text": "100% bro lmaoo", "sender": 2, "reply_to": 1},
     {"text": "ight send it lets see", "sender": 3}
-]
     {"text": "yo u ever just stare at the ceiling?", "sender": 0},
     {"text": "bruh what kinda question is that", "sender": 1},
     {"text": "nah fr, like just lay down n think abt life", "sender": 2},
