@@ -111,7 +111,7 @@ def main():
 
     log_message("info", "Memulai percakapan otomatis...")
 
-    message_history = {}
+    last_message_per_sender = {}  # Nyimpen pesan terakhir dari setiap sender
 
     for index, dialog in enumerate(dialog_list):
         try:
@@ -126,13 +126,16 @@ def main():
 
             nama_token, token, min_interval, max_interval = tokens[sender_index]
 
-            # Perbaikan utama: Pastikan `reply_to` mengambil message_id yang benar
-            message_reference = message_history.get(reply_to) if reply_to is not None else None
+            # Cari pesan yang akan direply
+            if reply_to is not None:
+                message_reference = last_message_per_sender.get(reply_to)  # Ambil pesan terakhir dari sender yang di-reply
+            else:
+                message_reference = None  # Tidak ada reply, kirim sebagai pesan baru
 
-            # Kirim pesan pertama
+            # Kirim pesan
             message_id = kirim_pesan(channel_id, nama_token, token, text, message_reference)
             if message_id:
-                message_history[index] = message_id  # Simpan message_id dengan benar
+                last_message_per_sender[sender_index] = message_id  # Simpan pesan terakhir sender ini
 
             waktu_tunggu = random.uniform(min_interval, max_interval)
             log_message("info", f"Waktu tunggu {waktu_tunggu:.2f} detik sebelum pesan berikutnya...")
@@ -144,7 +147,7 @@ def main():
                     next_text = next_dialog["text"]
                     next_message_id = kirim_pesan(channel_id, nama_token, token, next_text, message_id)
                     if next_message_id:
-                        message_history[index + 1] = next_message_id
+                        last_message_per_sender[sender_index] = next_message_id
                     index += 1  # Lewati 1 langkah karena sudah dikirim
 
         except Exception as e:
