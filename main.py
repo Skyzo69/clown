@@ -2,10 +2,14 @@ import time
 import logging
 import requests
 import json
-from colorama import Fore, Style
-from datetime import datetime
 import random
+from datetime import datetime
+from colorama import Fore, Style, init
 from tabulate import tabulate
+import pyfiglet  # Tambahkan pyfiglet untuk banner
+
+# Inisialisasi colorama agar warna otomatis reset setelah setiap cetakan
+init(autoreset=True)
 
 logging.basicConfig(filename="activity.log", level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
@@ -26,6 +30,28 @@ def log_message(level, message):
         logging.error(full_message)
         print(Fore.RED + full_message + Style.RESET_ALL)
         exit(1)
+
+def tampilkan_banner():
+    banner = pyfiglet.figlet_format("BOT DIALOG")
+    print(Fore.CYAN + banner + Style.RESET_ALL)
+
+def countdown(waktu_mulai_menit):
+    total_detik = waktu_mulai_menit * 60
+
+    while total_detik > 0:
+        if total_detik > 60:
+            menit = total_detik // 60
+            log_message("info", f"Memulai dalam {menit} menit...")
+            time.sleep(60)  # Update tiap menit
+        elif total_detik > 10:
+            log_message("info", f"Memulai dalam {total_detik} detik...")
+            time.sleep(10)  # Update tiap 10 detik
+        else:
+            log_message("info", f"Memulai dalam {total_detik} detik...")
+            time.sleep(1)  # Update tiap detik
+        total_detik -= 1
+
+    log_message("info", "Mulai sekarang!")
 
 def mengetik(channel_id, token):
     headers = {'Authorization': token}
@@ -66,13 +92,15 @@ def tampilkan_daftar_token(tokens):
     header = ["Nama", "Min Interval", "Max Interval"]
     tabel = [(nama, interval_min, interval_max) for nama, _, interval_min, interval_max in tokens]
 
-    print("\n╭──────────────────────────────────╮")
+    print(Fore.CYAN + "\n╭──────────────────────────────────╮")
     print("│           Daftar Token           │")
     print("├─────────┬────────────┬───────────┤")
     print(tabulate(tabel, headers=header, tablefmt="plain"))
-    print("╰─────────┴────────────┴───────────╯\n")
+    print("╰─────────┴────────────┴───────────╯\n" + Style.RESET_ALL)
 
 def main():
+    tampilkan_banner()  # Tampilkan banner di awal
+
     try:
         with open("dialog.txt", "r", encoding="utf-8") as f:
             dialog_list = json.load(f)
@@ -93,11 +121,11 @@ def main():
 
         tampilkan_daftar_token(tokens)
 
-        channel_id = input("Masukkan ID channel: ").strip()
+        channel_id = input(Fore.CYAN + "Masukkan ID channel: " + Style.RESET_ALL).strip()
         if not channel_id.isdigit():
             raise ValueError("Channel ID harus angka.")
 
-        waktu_mulai_menit = int(input("Masukkan waktu mulai dalam menit (0 untuk langsung mulai): "))
+        waktu_mulai_menit = int(input(Fore.CYAN + "Masukkan waktu mulai dalam menit (0 untuk langsung mulai): " + Style.RESET_ALL))
         if waktu_mulai_menit < 0:
             raise ValueError("Waktu mulai tidak boleh negatif.")
 
@@ -106,12 +134,11 @@ def main():
         return
 
     if waktu_mulai_menit > 0:
-        log_message("info", f"Menunggu {waktu_mulai_menit} menit sebelum mulai...")
-        time.sleep(waktu_mulai_menit * 60)
+        countdown(waktu_mulai_menit)
 
     log_message("info", "Memulai percakapan otomatis...")
 
-    last_message_per_sender = {}  # Nyimpen pesan terakhir dari setiap sender
+    last_message_per_sender = {}
 
     for index, dialog in enumerate(dialog_list):
         try:
@@ -126,16 +153,11 @@ def main():
 
             nama_token, token, min_interval, max_interval = tokens[sender_index]
 
-            # Cari pesan yang akan direply
-            if reply_to is not None:
-                message_reference = last_message_per_sender.get(reply_to)  # Ambil pesan terakhir dari sender yang di-reply
-            else:
-                message_reference = None  # Tidak ada reply, kirim sebagai pesan baru
+            message_reference = last_message_per_sender.get(reply_to) if reply_to is not None else None
 
-            # Kirim pesan
             message_id = kirim_pesan(channel_id, nama_token, token, text, message_reference)
             if message_id:
-                last_message_per_sender[sender_index] = message_id  # Simpan pesan terakhir sender ini
+                last_message_per_sender[sender_index] = message_id
 
             waktu_tunggu = random.uniform(min_interval, max_interval)
             log_message("info", f"Waktu tunggu {waktu_tunggu:.2f} detik sebelum pesan berikutnya...")
@@ -148,7 +170,7 @@ def main():
                     next_message_id = kirim_pesan(channel_id, nama_token, token, next_text, message_id)
                     if next_message_id:
                         last_message_per_sender[sender_index] = next_message_id
-                    index += 1  # Lewati 1 langkah karena sudah dikirim
+                    index += 1  
 
         except Exception as e:
             log_message("error", f"Terjadi kesalahan: {e}")
