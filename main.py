@@ -3,12 +3,10 @@ import logging
 import requests
 import json
 import random
-import itertools
 from datetime import datetime
 from colorama import Fore, Style, init
 from tabulate import tabulate
 import pyfiglet  
-import sys
 
 # Inisialisasi colorama agar warna otomatis reset setelah setiap cetakan
 init(autoreset=True)
@@ -29,13 +27,7 @@ def log_message(level, message):
     }
     
     color = colors.get(level, Fore.WHITE)
-    icons = {
-        "info": "✅",
-        "warning": "⚠️",
-        "error": "❌"
-    }
-    
-    print(color + icons.get(level, "ℹ️") + " " + full_message)
+    print(color + full_message)
     
     if level == "info":
         logging.info(full_message)
@@ -53,53 +45,36 @@ def countdown(waktu_mulai_menit):
     total_detik = waktu_mulai_menit * 60
     while total_detik > 0:
         if total_detik > 60:
-            log_message("info", f"⏳ Memulai dalam {total_detik // 60} menit...")
+            log_message("info", f"Memulai dalam {total_detik // 60} menit...")
             time.sleep(60)
         else:
-            for i in range(total_detik, 0, -1):
-                sys.stdout.write(f"\r⌛ Memulai dalam {i} detik" + "." * (i % 4))
-                sys.stdout.flush()
-                time.sleep(1)
-            break
-    print()
-    log_message("info", "🚀 Mulai sekarang!")
-
-def animasi_spinner(pesan, durasi=3):
-    spinner = itertools.cycle(["|", "/", "-", "\\"])
-    for _ in range(durasi * 5):
-        sys.stdout.write(f"\r🔄 {pesan} {next(spinner)}")
-        sys.stdout.flush()
-        time.sleep(0.2)
-    sys.stdout.write("\r" + " " * (len(pesan) + 5) + "\r")
+            log_message("info", f"Memulai dalam {total_detik} detik...")
+            time.sleep(1)
+        total_detik -= 1
+    log_message("info", "Mulai sekarang!")
 
 def validasi_token(nama_token, token):
     headers = {"Authorization": token}
     try:
-        animasi_spinner(f"Memvalidasi Token {nama_token}")
         response = requests.get("https://discord.com/api/v9/users/@me", headers=headers)
         if response.status_code == 200:
-            log_message("info", f"✅ Token {nama_token} valid.")
+            log_message("info", f"Token {nama_token} valid.")
             return True
         else:
-            log_message("error", f"❌ Token {nama_token} tidak valid! (Status Code: {response.status_code})")
+            log_message("error", f"Token {nama_token} tidak valid! (Status Code: {response.status_code})")
             return False
     except requests.exceptions.RequestException as e:
-        log_message("error", f"❌ Kesalahan saat memvalidasi token {nama_token}: {e}")
+        log_message("error", f"Kesalahan saat memvalidasi token {nama_token}: {e}")
         return False
 
 def mengetik(channel_id, token):
     headers = {'Authorization': token}
     try:
-        for _ in range(3):
-            sys.stdout.write("\r💬 Bot sedang mengetik" + "." * (_ % 4))
-            sys.stdout.flush()
-            time.sleep(1)
-        print()
         response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/typing", headers=headers)
         if response.status_code in [200, 204]:
-            log_message("info", "✍️ Typing indicator dikirim.")
+            log_message("info", "Typing indicator dikirim.")
     except requests.exceptions.RequestException as e:
-        log_message("error", f"❌ Error saat mengirim typing indicator: {e}")
+        log_message("error", f"Error saat mengirim typing indicator: {e}")
 
 def kirim_pesan(channel_id, nama_token, token, pesan, message_reference=None):
     headers = {'Authorization': token}
@@ -110,25 +85,31 @@ def kirim_pesan(channel_id, nama_token, token, pesan, message_reference=None):
     try:
         mengetik(channel_id, token)
         time.sleep(2)
-
         response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/messages", json=payload, headers=headers)
 
         if response.status_code == 200:
             message_id = response.json().get('id')
-            sys.stdout.write("\r📩 " + Fore.GREEN + f"[{nama_token}] Pesan dikirim: '{pesan}' (Message ID: {message_id})\n")
+            log_message("info", f"[{nama_token}] Pesan dikirim: '{pesan}' (Message ID: {message_id})")
             return message_id
         elif response.status_code == 429:
-            retry_after = int(response.json().get("retry_after", 1))
-            for i in range(retry_after, 0, -1):
-                sys.stdout.write(f"\r⚠️ Rate limit! Tunggu {i} detik" + "." * (i % 4))
-                sys.stdout.flush()
-                time.sleep(1)
-            print()
+            retry_after = response.json().get("retry_after", 1)
+            log_message("warning", f"[{nama_token}] Rate limit! Tunggu {retry_after:.2f} detik.")
+            time.sleep(retry_after)
             return kirim_pesan(channel_id, nama_token, token, pesan, message_reference)
         else:
-            log_message("error", f"❌ [{nama_token}] Gagal mengirim pesan: {response.status_code}")
+            log_message("error", f"[{nama_token}] Gagal mengirim pesan: {response.status_code}")
     except requests.exceptions.RequestException as e:
-        log_message("error", f"❌ Error saat mengirim pesan: {e}")
+        log_message("error", f"Error saat mengirim pesan: {e}")
+
+def tampilkan_daftar_token(tokens):
+    header = ["Nama Token", "Min Interval (s)", "Max Interval (s)"]
+    tabel = [(nama, interval_min, interval_max) for nama, _, interval_min, interval_max in tokens]
+
+    print(Fore.CYAN + "\n" + "="*40)
+    print(Fore.YELLOW + "           DAFTAR TOKEN")
+    print(Fore.CYAN + "="*40)
+    print(tabulate(tabel, headers=header, tablefmt="grid"))
+    print(Fore.CYAN + "="*40 + "\n")
 
 def main():
     tampilkan_banner()
@@ -151,10 +132,12 @@ def main():
         if len(tokens) < 2:
             raise ValueError("File token harus berisi minimal 2 akun.")
 
-        # **Validasi Token**
+        # **Validasi Token Sebelum Melanjutkan**
         for nama_token, token, _, _ in tokens:
             if not validasi_token(nama_token, token):
                 return  
+
+        tampilkan_daftar_token(tokens)
 
         channel_id = input(Fore.CYAN + "Masukkan ID channel: " + Style.RESET_ALL).strip()
         if not channel_id.isdigit():
@@ -165,15 +148,43 @@ def main():
             raise ValueError("Waktu mulai tidak boleh negatif.")
 
     except (FileNotFoundError, ValueError, json.JSONDecodeError) as e:
-        log_message("error", f"❌ Error: {e}")
+        log_message("error", f"Error: {e}")
         return
 
     if waktu_mulai_menit > 0:
         countdown(waktu_mulai_menit)
 
-    log_message("info", "🚀 Memulai percakapan otomatis...")
+    log_message("info", "Memulai percakapan otomatis...")
 
-    log_message("info", "🎉 Percakapan selesai.")
+    last_message_per_sender = {}
+
+    for index, dialog in enumerate(dialog_list):
+        try:
+            text = dialog["text"]
+            sender_index = dialog["sender"]
+            reply_to = dialog.get("reply_to", None)
+
+            if sender_index >= len(tokens):
+                log_message("error", f"Sender index {sender_index} di luar batas jumlah token.")
+                return
+
+            nama_token, token, min_interval, max_interval = tokens[sender_index]
+
+            message_reference = last_message_per_sender.get(reply_to) if reply_to is not None else None
+
+            message_id = kirim_pesan(channel_id, nama_token, token, text, message_reference)
+            if message_id:
+                last_message_per_sender[sender_index] = message_id
+
+            waktu_tunggu = random.uniform(min_interval, max_interval)
+            log_message("info", f"Waktu tunggu {waktu_tunggu:.2f} detik sebelum pesan berikutnya...")
+            time.sleep(waktu_tunggu)
+
+        except Exception as e:
+            log_message("error", f"Terjadi kesalahan: {e}")
+            return
+
+    log_message("info", "Percakapan selesai.")
 
 if __name__ == "__main__":
     main()
