@@ -157,33 +157,21 @@ def main():
             raise ValueError("❌ File dialog.txt kosong.")
 
         with open("token.txt", "r") as f:
-    tokens = []
-    kosong_semua = True  # Flag untuk mengecek apakah semua token kosong
+tokens = []
+for line in f.readlines():
+parts = line.strip().split(":")
+if len(parts) != 4:
+raise ValueError("⚠️ Format token.txt salah! Gunakan: nama_token:token:min_interval:max_interval")
+nama_token, token, min_interval, max_interval = parts
+tokens.append((nama_token, token, int(min_interval), int(max_interval)))
 
-    for line in f.readlines():
-        parts = line.strip().split(":")
-        if len(parts) != 4:
-            raise ValueError("⚠️ Format token.txt salah! Gunakan: nama_token:token:min_interval:max_interval")
-        
-        nama_token, token, min_interval, max_interval = parts
+if len(tokens) < 2:  
+        raise ValueError("⚠️ File token harus berisi minimal 2 akun.")  
 
-        if token:  
-            kosong_semua = False  # Ada setidaknya satu token yang valid
-        else:  
-            print(f"🚨 Token untuk '{nama_token}' kosong! Harap isi dengan benar.")
-
-        tokens.append((nama_token, token, int(min_interval), int(max_interval)))
-
-    if kosong_semua:
-        raise ValueError("🛑 Semua token kosong! Harap isi file token.txt dengan benar.")
-
-    if len(tokens) < 2:
-        raise ValueError("⚠️ File token harus berisi minimal 2 akun.")
-
-        # **Validasi Token Sebelum Melanjutkan**
-        for nama_token, token, _, _ in tokens:
-            if not validasi_token(nama_token, token):
-                return  
+    # **Validasi Token Sebelum Melanjutkan**  
+    for nama_token, token, _, _ in tokens:  
+        if not validasi_token(nama_token, token):  
+            return  
 
         tampilkan_daftar_token(tokens)
 
