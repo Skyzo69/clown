@@ -43,14 +43,42 @@ def tampilkan_banner():
 
 def countdown(waktu_mulai_menit):
     total_detik = waktu_mulai_menit * 60
+    log_message("info", f"🕒 Memulai dalam {waktu_mulai_menit} menit...")
+
     while total_detik > 0:
-        if total_detik > 60:
-            log_message("info", f"⏳ Memulai dalam {total_detik // 60} menit...")
+        if total_detik > 3600:  # Lebih dari 1 jam
+            jam = total_detik // 3600
+            menit = (total_detik % 3600) // 60
+            log_message("info", f"🕒 Memulai dalam {jam} jam {menit} menit...")
+            time.sleep(3600)
+            total_detik -= 3600
+        elif total_detik > 960:  # Antara 16 menit hingga 1 jam
+            menit = total_detik // 60
+            log_message("info", f"⏳ {menit} menit lagi...")
             time.sleep(60)
-        else:
-            log_message("info", f"⌛ Memulai dalam {total_detik} detik...")
-            time.sleep(1)
-        total_detik -= 1
+            total_detik -= 60
+        elif total_detik > 300:  # Antara 5 menit hingga 16 menit
+            log_message("info", f"⏳ {total_detik // 60} menit lagi...")
+            time.sleep(60)
+            total_detik -= 60
+        elif total_detik > 60:  # Antara 1 menit hingga 5 menit
+            log_message("info", f"🔥 {total_detik // 60} menit lagi...")
+            time.sleep(60)
+            total_detik -= 60
+        elif total_detik > 30:  # Antara 30 detik hingga 1 menit
+            log_message("info", "🔥 30 detik lagi...")
+            time.sleep(10)
+            total_detik -= 10
+        elif total_detik > 10:  # Antara 10 detik hingga 30 detik
+            log_message("info", "🔥 10 detik lagi...")
+            time.sleep(5)
+            total_detik -= 5
+        else:  # Hitungan mundur 5...4...3...2...1...
+            for i in range(total_detik, 0, -1):
+                log_message("info", f"🔥 {i}...")
+                time.sleep(1)
+            total_detik = 0
+
     log_message("info", "🚀 Mulai sekarang!")
 
 def validasi_token(nama_token, token):
