@@ -52,26 +52,27 @@ def countdown(waktu_mulai_menit):
     
     while total_detik > 0:
         if total_detik > 1800:  # Jika masih lebih dari 30 menit, tunggu 5 menit
-            time.sleep(300)
+            sleep_time = 300
         elif total_detik > 600:  # Jika lebih dari 10 menit, update setiap 5 menit
             log_message("info", f"⏳ {total_detik // 60} menit lagi...")
-            time.sleep(300)
+            sleep_time = 300
         elif total_detik > 300:  # Jika lebih dari 5 menit, update setiap 1 menit
             log_message("info", f"⏳ {total_detik // 60} menit lagi...")
-            time.sleep(60)
+            sleep_time = 60
         elif total_detik > 60:  # Jika kurang dari 5 menit, update tiap 30 detik
             log_message("info", f"🔥 {total_detik // 60} menit lagi...")
-            time.sleep(30)
+            sleep_time = 30
         elif total_detik > 10:  # Jika kurang dari 30 detik, update tiap 10 detik
             log_message("info", f"🔥 {total_detik} detik lagi...")
-            time.sleep(10)
+            sleep_time = 10
         else:  # Hitungan mundur dramatis (5...4...3...2...1)
             for i in range(total_detik, 0, -1):
                 log_message("info", f"🔥 {i}...")
                 time.sleep(1)
             break
 
-        total_detik -= 10 if total_detik <= 30 else 60  # Kurangi dengan 10 detik jika < 30, atau 60 detik jika lebih
+        time.sleep(sleep_time)
+        total_detik -= sleep_time  # Kurangi waktu sesuai dengan sleep
 
     log_message("info", "🚀 Mulai sekarang!")
 
