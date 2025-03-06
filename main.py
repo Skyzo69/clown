@@ -89,12 +89,6 @@ def countdown(waktu_mulai_menit):
 
     print(Fore.GREEN + "\n🚀 Mulai sekarang!\n")
 
-# Menampilkan banner saat program dimulai
-tampilkan_banner()
-
-# Contoh penggunaan
-countdown(1)  # Ganti angka ini untuk mengubah durasi countdown dalam menit
-
 def validasi_token(nama_token, token):
     headers = {"Authorization": token}
     try:
