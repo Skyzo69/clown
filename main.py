@@ -43,41 +43,35 @@ def tampilkan_banner():
 
 def countdown(waktu_mulai_menit):
     total_detik = waktu_mulai_menit * 60
-    log_message("info", f"🕒 Memulai dalam {waktu_mulai_menit} menit...")
 
+    # Tampilkan format waktu yang lebih user-friendly
+    if waktu_mulai_menit >= 60:
+        jam = waktu_mulai_menit // 60
+        menit = waktu_mulai_menit % 60
+        log_message("info", f"══════════════════════════════ 🕒 Memulai dalam {jam} jam {menit} menit... ══════════════════════════════")
+    
     while total_detik > 0:
-        if total_detik > 3600:  # Lebih dari 1 jam
-            jam = total_detik // 3600
-            menit = (total_detik % 3600) // 60
-            log_message("info", f"🕒 Memulai dalam {jam} jam {menit} menit...")
-            time.sleep(3600)
-            total_detik -= 3600
-        elif total_detik > 960:  # Antara 16 menit hingga 1 jam
-            menit = total_detik // 60
-            log_message("info", f"⏳ {menit} menit lagi...")
-            time.sleep(60)
-            total_detik -= 60
-        elif total_detik > 300:  # Antara 5 menit hingga 16 menit
+        if total_detik > 1800:  # Jika masih lebih dari 30 menit, tunggu 5 menit
+            time.sleep(300)
+        elif total_detik > 600:  # Jika lebih dari 10 menit, update setiap 5 menit
+            log_message("info", f"⏳ {total_detik // 60} menit lagi...")
+            time.sleep(300)
+        elif total_detik > 300:  # Jika lebih dari 5 menit, update setiap 1 menit
             log_message("info", f"⏳ {total_detik // 60} menit lagi...")
             time.sleep(60)
-            total_detik -= 60
-        elif total_detik > 60:  # Antara 1 menit hingga 5 menit
+        elif total_detik > 60:  # Jika kurang dari 5 menit, update tiap 30 detik
             log_message("info", f"🔥 {total_detik // 60} menit lagi...")
-            time.sleep(60)
-            total_detik -= 60
-        elif total_detik > 30:  # Antara 30 detik hingga 1 menit
-            log_message("info", "🔥 30 detik lagi...")
+            time.sleep(30)
+        elif total_detik > 10:  # Jika kurang dari 30 detik, update tiap 10 detik
+            log_message("info", f"🔥 {total_detik} detik lagi...")
             time.sleep(10)
-            total_detik -= 10
-        elif total_detik > 10:  # Antara 10 detik hingga 30 detik
-            log_message("info", "🔥 10 detik lagi...")
-            time.sleep(5)
-            total_detik -= 5
-        else:  # Hitungan mundur 5...4...3...2...1...
+        else:  # Hitungan mundur dramatis (5...4...3...2...1)
             for i in range(total_detik, 0, -1):
                 log_message("info", f"🔥 {i}...")
                 time.sleep(1)
-            total_detik = 0
+            break
+
+        total_detik -= 10 if total_detik <= 30 else 60  # Kurangi dengan 10 detik jika < 30, atau 60 detik jika lebih
 
     log_message("info", "🚀 Mulai sekarang!")
 
