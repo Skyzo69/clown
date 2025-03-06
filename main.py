@@ -3,7 +3,7 @@ import logging
 import requests
 import json
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 from colorama import Fore, Style, init
 from tabulate import tabulate
 import pyfiglet  
@@ -17,6 +17,7 @@ def get_current_time():
     return datetime.now().strftime("%H:%M:%S")
 
 def log_message(level, message):
+    """Mencetak pesan dengan warna dan mencatat ke log file"""
     current_time = get_current_time()
     full_message = f"[{current_time}] {message}"
 
@@ -38,43 +39,61 @@ def log_message(level, message):
         exit(1)
 
 def tampilkan_banner():
+    """Menampilkan banner dengan pyfiglet"""
     banner = pyfiglet.figlet_format("BOT DIALOG")
     print(Fore.CYAN + banner)
+
+def format_waktu(sisa_detik):
+    """Format waktu menjadi jam, menit, detik"""
+    waktu = str(timedelta(seconds=sisa_detik))
+    return waktu
+
+def tampilkan_bar(progress, total):
+    """Membuat progress bar dengan panjang 30 karakter"""
+    panjang_bar = 30
+    filled_length = int(panjang_bar * progress / total)
+    bar = "█" * filled_length + "▒" * (panjang_bar - filled_length)
+    return f"[{bar}]"
 
 def countdown(waktu_mulai_menit):
     total_detik = waktu_mulai_menit * 60
 
-    # Tampilkan format waktu yang lebih user-friendly
     if waktu_mulai_menit >= 60:
         jam = waktu_mulai_menit // 60
         menit = waktu_mulai_menit % 60
-        log_message("info", f"══════════════════════════════ 🕒 Memulai dalam {jam} jam {menit} menit... ══════════════════════════════")
-    
+        log_message("info", f"\n🕒 Memulai dalam {jam} jam {menit} menit...\n")
+
     while total_detik > 0:
-        if total_detik > 1800:  # Jika masih lebih dari 30 menit, tunggu 5 menit
-            sleep_time = 300
-        elif total_detik > 600:  # Jika lebih dari 10 menit, update setiap 5 menit
-            log_message("info", f"⏳ {total_detik // 60} menit lagi...")
+        waktu_str = format_waktu(total_detik)
+        bar = tampilkan_bar(total_detik, waktu_mulai_menit * 60)
+
+        print(Fore.CYAN + f"\r⏳ {bar} {waktu_str} lagi...", end="", flush=True)
+
+        if total_detik > 600:  # Jika lebih dari 10 menit, update setiap 5 menit
             sleep_time = 300
         elif total_detik > 300:  # Jika lebih dari 5 menit, update setiap 1 menit
-            log_message("info", f"⏳ {total_detik // 60} menit lagi...")
             sleep_time = 60
-        elif total_detik > 60:  # Jika kurang dari 5 menit, update tiap 30 detik
-            log_message("info", f"🔥 {total_detik // 60} menit lagi...")
+        elif total_detik > 60:  # Jika lebih dari 1 menit, update setiap 30 detik
             sleep_time = 30
-        elif total_detik > 10:  # Jika kurang dari 30 detik, update tiap 10 detik
-            log_message("info", f"🔥 {total_detik} detik lagi...")
+        elif total_detik > 10:  # Jika lebih dari 10 detik, update setiap 10 detik
             sleep_time = 10
-        else:  # Hitungan mundur dramatis (5...4...3...2...1)
+        else:  # Countdown final 10 detik
             for i in range(total_detik, 0, -1):
-                log_message("info", f"🔥 {i}...")
+                bar = tampilkan_bar(i, waktu_mulai_menit * 60)
+                print(Fore.RED + f"\r⏳ {bar} {i} detik lagi... ", end="", flush=True)
                 time.sleep(1)
             break
 
         time.sleep(sleep_time)
-        total_detik -= sleep_time  # Kurangi waktu sesuai dengan sleep
+        total_detik -= sleep_time  # Kurangi waktu sesuai sleep
 
-    log_message("info", "🚀 Mulai sekarang!")
+    print(Fore.GREEN + "\n🚀 Mulai sekarang!\n")
+
+# Menampilkan banner saat program dimulai
+tampilkan_banner()
+
+# Contoh penggunaan
+countdown(1)  # Ganti angka ini untuk mengubah durasi countdown dalam menit
 
 def validasi_token(nama_token, token):
     headers = {"Authorization": token}
