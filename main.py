@@ -45,26 +45,26 @@ def countdown(waktu_mulai_menit):
     total_detik = waktu_mulai_menit * 60
     while total_detik > 0:
         if total_detik > 60:
-            log_message("info", f"Memulai dalam {total_detik // 60} menit...")
+            log_message("info", f"⏳ Memulai dalam {total_detik // 60} menit...")
             time.sleep(60)
         else:
-            log_message("info", f"Memulai dalam {total_detik} detik...")
+            log_message("info", f"⌛ Memulai dalam {total_detik} detik...")
             time.sleep(1)
         total_detik -= 1
-    log_message("info", "Mulai sekarang!")
+    log_message("info", "🚀 Mulai sekarang!")
 
 def validasi_token(nama_token, token):
     headers = {"Authorization": token}
     try:
         response = requests.get("https://discord.com/api/v9/users/@me", headers=headers)
         if response.status_code == 200:
-            log_message("info", f"Token {nama_token} valid.")
+            log_message("info", f"✅ Token {nama_token} valid.")
             return True
         else:
-            log_message("error", f"Token {nama_token} tidak valid! (Status Code: {response.status_code})")
+            log_message("error", f"❌ Token {nama_token} tidak valid! (Status Code: {response.status_code})")
             return False
     except requests.exceptions.RequestException as e:
-        log_message("error", f"Kesalahan saat memvalidasi token {nama_token}: {e}")
+        log_message("error", f"⚠️ Kesalahan saat memvalidasi token {nama_token}: {e}")
         return False
 
 def mengetik(channel_id, token):
@@ -72,9 +72,9 @@ def mengetik(channel_id, token):
     try:
         response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/typing", headers=headers)
         if response.status_code in [200, 204]:
-            log_message("info", "Typing indicator dikirim.")
+            log_message("info", "💬 Bot sedang mengetik...")
     except requests.exceptions.RequestException as e:
-        log_message("error", f"Error saat mengirim typing indicator: {e}")
+        log_message("error", f"❗ Error saat mengirim typing indicator: {e}")
 
 def kirim_pesan(channel_id, nama_token, token, pesan, message_reference=None):
     headers = {'Authorization': token}
@@ -89,24 +89,24 @@ def kirim_pesan(channel_id, nama_token, token, pesan, message_reference=None):
 
         if response.status_code == 200:
             message_id = response.json().get('id')
-            log_message("info", f"[{nama_token}] Pesan dikirim: '{pesan}' (Message ID: {message_id})")
+            log_message("info", f"📩 [{nama_token}] Pesan dikirim: '{pesan}' (Message ID: {message_id})")
             return message_id
         elif response.status_code == 429:
             retry_after = response.json().get("retry_after", 1)
-            log_message("warning", f"[{nama_token}] Rate limit! Tunggu {retry_after:.2f} detik.")
+            log_message("warning", f"⚠️ [{nama_token}] Rate limit! Tunggu {retry_after:.2f} detik.")
             time.sleep(retry_after)
             return kirim_pesan(channel_id, nama_token, token, pesan, message_reference)
         else:
-            log_message("error", f"[{nama_token}] Gagal mengirim pesan: {response.status_code}")
+            log_message("error", f"❌ [{nama_token}] Gagal mengirim pesan: {response.status_code}")
     except requests.exceptions.RequestException as e:
-        log_message("error", f"Error saat mengirim pesan: {e}")
+        log_message("error", f"❗ Error saat mengirim pesan: {e}")
 
 def tampilkan_daftar_token(tokens):
     header = ["Nama Token", "Min Interval (s)", "Max Interval (s)"]
     tabel = [(nama, interval_min, interval_max) for nama, _, interval_min, interval_max in tokens]
 
     print(Fore.CYAN + "\n" + "="*40)
-    print(Fore.YELLOW + "           DAFTAR TOKEN")
+    print(Fore.YELLOW + "           🎛️ DAFTAR TOKEN")
     print(Fore.CYAN + "="*40)
     print(tabulate(tabel, headers=header, tablefmt="grid"))
     print(Fore.CYAN + "="*40 + "\n")
@@ -118,19 +118,19 @@ def main():
         with open("dialog.txt", "r", encoding="utf-8") as f:
             dialog_list = json.load(f)
         if not dialog_list:
-            raise ValueError("File dialog.txt kosong.")
+            raise ValueError("❌ File dialog.txt kosong.")
 
         with open("token.txt", "r") as f:
             tokens = []
             for line in f.readlines():
                 parts = line.strip().split(":")
                 if len(parts) != 4:
-                    raise ValueError("Format token.txt salah! Gunakan: nama_token:token:min_interval:max_interval")
+                    raise ValueError("⚠️ Format token.txt salah! Gunakan: nama_token:token:min_interval:max_interval")
                 nama_token, token, min_interval, max_interval = parts
                 tokens.append((nama_token, token, int(min_interval), int(max_interval)))
 
         if len(tokens) < 2:
-            raise ValueError("File token harus berisi minimal 2 akun.")
+            raise ValueError("⚠️ File token harus berisi minimal 2 akun.")
 
         # **Validasi Token Sebelum Melanjutkan**
         for nama_token, token, _, _ in tokens:
@@ -139,22 +139,22 @@ def main():
 
         tampilkan_daftar_token(tokens)
 
-        channel_id = input(Fore.CYAN + "Masukkan ID channel: " + Style.RESET_ALL).strip()
+        channel_id = input(Fore.CYAN + "🔢 Masukkan ID channel: " + Style.RESET_ALL).strip()
         if not channel_id.isdigit():
-            raise ValueError("Channel ID harus angka.")
+            raise ValueError("⚠️ Channel ID harus angka.")
 
-        waktu_mulai_menit = int(input(Fore.CYAN + "Masukkan waktu mulai dalam menit (0 untuk langsung mulai): " + Style.RESET_ALL))
+        waktu_mulai_menit = int(input(Fore.CYAN + "⏳ Masukkan waktu mulai dalam menit (0 untuk langsung mulai): " + Style.RESET_ALL))
         if waktu_mulai_menit < 0:
-            raise ValueError("Waktu mulai tidak boleh negatif.")
+            raise ValueError("⚠️ Waktu mulai tidak boleh negatif.")
 
     except (FileNotFoundError, ValueError, json.JSONDecodeError) as e:
-        log_message("error", f"Error: {e}")
+        log_message("error", f"❗ Error: {e}")
         return
 
     if waktu_mulai_menit > 0:
         countdown(waktu_mulai_menit)
 
-    log_message("info", "Memulai percakapan otomatis...")
+    log_message("info", "🤖 Memulai percakapan otomatis...")
 
     last_message_per_sender = {}
 
@@ -165,7 +165,7 @@ def main():
             reply_to = dialog.get("reply_to", None)
 
             if sender_index >= len(tokens):
-                log_message("error", f"Sender index {sender_index} di luar batas jumlah token.")
+                log_message("error", f"⚠️ Sender index {sender_index} di luar batas jumlah token.")
                 return
 
             nama_token, token, min_interval, max_interval = tokens[sender_index]
@@ -177,14 +177,14 @@ def main():
                 last_message_per_sender[sender_index] = message_id
 
             waktu_tunggu = random.uniform(min_interval, max_interval)
-            log_message("info", f"Waktu tunggu {waktu_tunggu:.2f} detik sebelum pesan berikutnya...")
+            log_message("info", f"⏳ Waktu tunggu {waktu_tunggu:.2f} detik sebelum pesan berikutnya...")
             time.sleep(waktu_tunggu)
 
         except Exception as e:
-            log_message("error", f"Terjadi kesalahan: {e}")
+            log_message("error", f"❗ Terjadi kesalahan: {e}")
             return
 
-    log_message("info", "Percakapan selesai.")
+    log_message("info", "🎉 Percakapan selesai.")
 
 if __name__ == "__main__":
     main()
