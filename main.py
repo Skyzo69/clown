@@ -247,8 +247,9 @@ def main():
 
                 # Ubah interval setelah delay jika diatur
                 if delay_count in interval_changes:
-                    min_interval, max_interval = interval_changes[delay_count]
-                    log_message("info", f"⏳ Interval changed to {min_interval}-{max_interval} seconds after delay {delay_count}/{max_delays}")
+    new_min_interval, new_max_interval = interval_changes[delay_count]
+    tokens[sender_index] = (token_name, token, new_min_interval, new_max_interval)
+    log_message("info", f"⏳ Interval changed to {new_min_interval}-{new_max_interval} seconds after delay {delay_count}/{max_delays}")
 
         except Exception as e:
             log_message("error", f"❗ An error occurred: {e}")
