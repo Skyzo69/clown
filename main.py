@@ -173,6 +173,56 @@ def display_token_list(tokens):
     print(tabulate(table, headers=header, tablefmt="grid"))
     print(Fore.CYAN + "="*40 + "\n")
 
+def load_templates(file_path="template.txt"):
+    """Loads templates from a file"""
+    templates = {}
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+            key = None
+            for line in lines:
+                line = line.strip()
+                if line.startswith("[") and line.endswith("]"):
+                    key = line[1:-1].lower()
+                    templates[key] = []
+                elif key and line:
+                    templates[key].append(line)
+    except FileNotFoundError:
+        log_message("error", f"❗ Template file {file_path} not found.")
+    except Exception as e:
+        log_message("error", f"❗ Error loading templates: {e}")
+    return templates
+
+def get_reply(message, reply_templates):
+    """Gets a reply based on the message content and templates"""
+    for key, responses in reply_templates.items():
+        if any(word in message.lower() for word in key.split()):
+            return random.choice(responses)
+    return None
+
+def handle_message(data, bot_id, channel_id, token, token_name, reply_templates):
+    content = data.get("content", "")
+    mentions = data.get("mentions", [])
+    message_id = data.get("id")
+
+    is_mentioned = any(user["id"] == bot_id for user in mentions)
+    is_reply = "referenced_message" in data
+
+    if is_mentioned or is_reply:
+        log_message("info", f"🔔 Mention/Reply detected! Processing...")
+
+        # Ambil balasan dari template
+        reply_text = get_reply(content, reply_templates)
+
+        if reply_text:
+            reply_delay = random.uniform(15, 60)
+            log_message("info", f"⏳ Waiting {reply_delay:.2f} seconds before replying...")
+            time.sleep(reply_delay)
+
+            send_message(channel_id, token_name, token, reply_text, message_reference=message_id)
+        else:
+            log_message("warning", "❌ No matching template found. Ignoring.")
+
 def main():
     display_banner()
 
@@ -189,96 +239,51 @@ def main():
                 if len(parts) != 4:
                     raise ValueError("⚠️ Incorrect token.txt format! Use: token_name:token:min_interval:max_interval")
                 token_name, token, min_interval, max_interval = parts
-                tokens.append((token_name, token, int(min_interval), int(max_interval)))
+                try:
+                    min_interval = int(min_interval)
+                    max_interval = int(max_interval)
+                except ValueError:
+                    raise ValueError(f"⚠️ min_interval dan max_interval harus berupa angka di token.txt. Nilai tidak valid: {min_interval}, {max_interval}")
+                tokens.append((token_name, token, min_interval, max_interval))
 
         if len(tokens) < 2:
-            raise ValueError("⚠️ Token file must contain at least 2 accounts.")
-            
-            reply_templates = load_templates()
+            raise ValueError("⚠️ File token harus berisi minimal 2 akun.")
 
-    except (FileNotFoundError, ValueError, json.JSONDecodeError) as e:
-        log_message("error", f"❗ Error: {e}")
-        return
+        # Load templates sebelum digunakan
+        reply_templates = load_templates()
 
-         # **Baca template dari file**
-        def load_templates(file_path="template.txt"):
-            templates = {}
-        with open(file_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-
-        key = None
-    for line in lines:
-        line = line.strip()
-        if line.startswith("[") and line.endswith("]"):
-            key = line[1:-1].lower()
-            templates[key] = []
-        elif key and line:
-            templates[key].append(line)
-
-    return templates
-
-         # **Cari balasan berdasarkan template**
-def get_reply(message):
-    for key, responses in reply_templates.items():  # Indentasi harus seragam
-        if any(word in message.lower() for word in key.split()):
-            return random.choice(responses)
-    return None
-    
-def handle_message(data, bot_id, channel_id, token, token_name):
-    content = data.get("content", "")
-    mentions = data.get("mentions", [])
-    message_id = data.get("id")
-
-    is_mentioned = any(user["id"] == bot_id for user in mentions)
-    is_reply = "referenced_message" in data
-
-    if is_mentioned or is_reply:
-        log_message("info", f"🔔 Mention/Reply detected! Processing...")
-
-        # **Ambil balasan dari template**
-        reply_text = get_reply(content)
-
-        if reply_text:
-            reply_delay = random.uniform(15, 60)  # **Delay khusus untuk reply**
-            log_message("info", f"⏳ Waiting {reply_delay:.2f} seconds before replying...")
-            time.sleep(reply_delay)
-
-            send_message(channel_id, token_name, token, reply_text, message_reference=message_id)
-        else:
-            log_message("warning", "❌ No matching template found. Ignoring.")
-
-    try:
+        # Validasi token
         for token_name, token, _, _ in tokens:
             if not validate_token(token_name, token):
                 return  
 
         display_token_list(tokens)
 
-        channel_id = input(Fore.CYAN + "🔢 Enter channel ID: " + Style.RESET_ALL).strip()
+        channel_id = input(Fore.CYAN + "🔢 Masukkan ID channel: " + Style.RESET_ALL).strip()
         if not channel_id.isdigit():
-            raise ValueError("⚠️ Channel ID must be numeric.")
+            raise ValueError("⚠️ ID channel harus berupa angka.")
 
-        start_time_minutes = int(input(Fore.CYAN + "⏳ Enter start time in minutes (0 to start immediately): " + Style.RESET_ALL))
+        start_time_minutes = int(input(Fore.CYAN + "⏳ Masukkan waktu mulai dalam menit (0 untuk mulai langsung): " + Style.RESET_ALL))
         if start_time_minutes < 0:
-            raise ValueError("⚠️ Start time cannot be negative.")
+            raise ValueError("⚠️ Waktu mulai tidak boleh negatif.")
 
-        max_delays = int(input(Fore.CYAN + "🔁 Enter how many times to delay: " + Style.RESET_ALL))
+        max_delays = int(input(Fore.CYAN + "🔁 Masukkan berapa kali delay: " + Style.RESET_ALL))
         delay_settings = []
 
         for i in range(max_delays):
-            delay_after = int(input(Fore.CYAN + f"🔄 Enter how many messages before delay {i+1}: " + Style.RESET_ALL))
-            delay_time = int(input(Fore.CYAN + f"⏳ Enter delay {i+1} time in seconds: " + Style.RESET_ALL))
+            delay_after = int(input(Fore.CYAN + f"🔄 Masukkan jumlah pesan sebelum delay {i+1}: " + Style.RESET_ALL))
+            delay_time = int(input(Fore.CYAN + f"⏳ Masukkan waktu delay {i+1} dalam detik: " + Style.RESET_ALL))
             delay_settings.append((delay_after, delay_time))
 
-        change_interval = input(Fore.CYAN + "⏳ Change interval after certain delays? (y/n): " + Style.RESET_ALL).strip().lower()
+        change_interval = input(Fore.CYAN + "⏳ Ganti interval setelah delay tertentu? (y/n): " + Style.RESET_ALL).strip().lower()
         interval_changes = {}
 
         if change_interval == "y":
-            num_changes = int(input(Fore.CYAN + "🔄 How many interval changes? " + Style.RESET_ALL))
+            num_changes = int(input(Fore.CYAN + "🔄 Berapa kali ganti interval? " + Style.RESET_ALL))
             for _ in range(num_changes):
-                after_delay = int(input(Fore.CYAN + "🕒 After which delay number? " + Style.RESET_ALL))
-                new_min_interval = int(input(Fore.CYAN + "🕒 Enter new min interval (seconds): " + Style.RESET_ALL))
-                new_max_interval = int(input(Fore.CYAN + "🕒 Enter new max interval (seconds): " + Style.RESET_ALL))
+                after_delay = int(input(Fore.CYAN + "🕒 Setelah delay nomor berapa? " + Style.RESET_ALL))
+                new_min_interval = int(input(Fore.CYAN + "🕒 Masukkan min interval baru (detik): " + Style.RESET_ALL))
+                new_max_interval = int(input(Fore.CYAN + "🕒 Masukkan max interval baru (detik): " + Style.RESET_ALL))
                 interval_changes[after_delay] = (new_min_interval, new_max_interval)
 
     except (FileNotFoundError, ValueError, json.JSONDecodeError) as e:
@@ -288,7 +293,7 @@ def handle_message(data, bot_id, channel_id, token, token_name):
     if start_time_minutes > 0:
         countdown(start_time_minutes)
 
-    log_message("info", "🤖 Starting automatic conversation...")
+    log_message("info", "🤖 Memulai percakapan otomatis...")
 
     last_message_per_sender = {}
     message_count = 0
@@ -301,7 +306,7 @@ def handle_message(data, bot_id, channel_id, token, token_name):
             reply_to = dialog.get("reply_to", None)
 
             if sender_index >= len(tokens):
-                log_message("error", f"⚠️ Sender index {sender_index} is out of bounds.")
+                log_message("error", f"⚠️ Indeks pengirim {sender_index} di luar batas.")
                 return
 
             token_name, token, min_interval, max_interval = tokens[sender_index]
@@ -313,32 +318,32 @@ def handle_message(data, bot_id, channel_id, token, token_name):
 
             custom_delay = dialog.get("delay", None)
             if custom_delay:
-                log_message("info", f"⏳ Custom delay json detected: {custom_delay} seconds")
+                log_message("info", f"⏳ Delay kustom dari JSON terdeteksi: {custom_delay} detik")
                 time.sleep(custom_delay)
-                log_message("info", "⏳ Resuming after custom delay...")
+                log_message("info", "⏳ Melanjutkan setelah delay kustom...")
                 continue  
                 
             wait_time = random.uniform(min_interval, max_interval)
-            log_message("info", f"⏳ Waiting {wait_time:.2f} seconds before the next message...")
+            log_message("info", f"⏳ Menunggu {wait_time:.2f} detik sebelum pesan berikutnya...")
             time.sleep(wait_time)
 
             message_count += 1
 
             if delay_count < max_delays and delay_count < len(delay_settings) and message_count >= delay_settings[delay_count][0]:
-                log_message("info", f"⏸️ Pausing for {delay_settings[delay_count][1]} seconds... ({delay_count + 1}/{max_delays})")
+                log_message("info", f"⏸️ Berhenti selama {delay_settings[delay_count][1]} detik... ({delay_count + 1}/{max_delays})")
                 time.sleep(delay_settings[delay_count][1])
                 delay_count += 1
 
             if delay_count in interval_changes:
                 new_min_interval, new_max_interval = interval_changes[delay_count]
                 tokens[sender_index] = (token_name, token, new_min_interval, new_max_interval)
-                log_message("info", f"⏳ Interval changed to {new_min_interval}-{new_max_interval} seconds after delay {delay_count}/{max_delays}")
+                log_message("info", f"⏳ Interval diubah menjadi {new_min_interval}-{new_max_interval} detik setelah delay {delay_count}/{max_delays}")
 
         except Exception as e:
-            log_message("error", f"❗ An error occurred: {e}")
+            log_message("error", f"❗ Terjadi kesalahan: {e}")
             return
 
-    log_message("info", "🎉 Conversation completed.")
+    log_message("info", "🎉 Percakapan selesai.")
 
 if __name__ == "__main__":
     main()
