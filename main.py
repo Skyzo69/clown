@@ -104,20 +104,24 @@ def validate_token(token_name, token):
         log_message("error", f"⚠️ Error validating token {token_name}: {e}")
         return False
 
+def log_message(level, message):
+    print(f"[{level.upper()}] {message}")  # Dummy logger
+
 def typing_indicator(channel_id, token, typing_time):
-    """Mengirim typing indicator ke Discord setiap 2 detik agar tetap aktif selama `typing_time`."""
+    """Mengirim typing indicator ke Discord selama `typing_time`."""
     headers = {'Authorization': token}
     start_time = time.time()
-
+    
     while time.time() - start_time < typing_time:
         try:
             response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/typing", headers=headers)
             if response.status_code in [200, 204]:
                 log_message("info", "💬 Bot is typing...")
-            time.sleep(2)  # Kirim ulang setiap 2 detik agar indikator tetap muncul
+            time.sleep(min(typing_time - (time.time() - start_time), 5))  # Kirim ulang dengan interval dinamis
         except requests.exceptions.RequestException as e:
             log_message("error", f"❗ Error while sending typing indicator: {e}")
             break  # Stop loop kalau terjadi error
+
 def send_message(channel_id, token_name, token, message, message_reference=None):
     headers = {'Authorization': token}
     payload = {'content': message}
@@ -126,13 +130,7 @@ def send_message(channel_id, token_name, token, message, message_reference=None)
 
     # **Hitung waktu mengetik berdasarkan jumlah kata**
     word_count = len(message.split())
-
-    if word_count <= 4:
-        typing_time = random.uniform(2, 4)
-    elif word_count <= 10:
-        typing_time = random.uniform(4, 8)
-    else:
-        typing_time = random.uniform(10, 16)
+    typing_time = random.uniform(0.4 * word_count, 0.7 * word_count)  # 0.4-0.7 detik per kata
 
     # **Jalankan typing indicator di thread terpisah**
     thread = threading.Thread(target=typing_indicator, args=(channel_id, token, typing_time))
@@ -143,21 +141,12 @@ def send_message(channel_id, token_name, token, message, message_reference=None)
     # **Tunggu sebelum kirim pesan**
     time.sleep(typing_time)
 
-    try:
-        response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/messages", json=payload, headers=headers)
-
-        if response.status_code == 200:
-            message_id = response.json().get('id')
-            log_message("info", f"📩 [{token_name}] Message sent: '{message}' (Message ID: {message_id})")
-            return message_id
-        elif response.status_code == 429:
-            retry_after = response.json().get("retry_after", 1)
-            log_message("warning", f"⚠️ [{token_name}] Rate limit! Waiting {retry_after:.2f} seconds.")
-            time.sleep(retry_after)
-            return send_message(channel_id, token_name, token, message, message_reference)
-        else:
-            log_message("error", f"❌ [{token_name}] Failed to send message: {response.status_code}")
-    except requests.exceptions.RequestException as e:
+    # **Kirim pesan**
+    response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/messages", headers=headers, json=payload)
+    if response.status_code == 200 or response.status_code == 204:
+        log_message("info", "✅ Message sent!")
+    else:
+        log_message("error", f"❌ Failed to send message: {response.text}")
         log_message("error", f"❗ Error while sending message: {e}")
 
 def display_token_list(tokens):
