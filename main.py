@@ -132,7 +132,6 @@ def typing_indicator(channel_id, token, typing_time):
                 log_message("warning", f"⚠️ Typing request failed: {response.status_code}")
                 break  # Stop kalau gagal
 
-            # Hitung waktu tersisa dan sesuaikan interval
             remaining_time = typing_time - (time.time() - start_time)
             sleep_time = min(remaining_time, 5)  # Maksimum 5 detik
             if sleep_time > 0:
@@ -216,23 +215,18 @@ def get_reply(message, reply_templates, reply_indices, used_keywords):
     if not available_keys:
         return None, None
 
-    # Pilih keyword yang belum digunakan
     selected_key = available_keys[0]  # Pilih keyword pertama yang tersedia
-
     responses = reply_templates[selected_key]
     if not responses:
         return None, None
 
-    # Dapatkan indeks balasan berikutnya
     index = reply_indices.get(selected_key, 0)
     reply = responses[index]
-
-    # Update indeks untuk balasan berikutnya
     reply_indices[selected_key] = (index + 1) % len(responses)
 
     return reply, selected_key
 
-def should_respond(data, bot_ids, processed_messages, manual_messages):
+def should_respond(data, bot_ids, processed_messages, manual_messages, auto_message_ids):
     """Determines which bots should respond (returns a list of bot_ids)"""
     message_id = data.get("id")
     if message_id in processed_messages:
@@ -253,8 +247,7 @@ def should_respond(data, bot_ids, processed_messages, manual_messages):
     if referenced_message:
         referenced_author_id = referenced_message.get("author", {}).get("id")
         if referenced_author_id in bot_ids:
-            # Cek apakah ada pesan manual terbaru dari bot ini
-            if referenced_author_id in manual_messages and manual_messages[referenced_author_id] > message_id:
+            if referenced_author_id in manual_messages and manual_messages[referenced_author_id] > message_id and manual_messages[referenced_author_id] not in auto_message_ids:
                 log_message("info", f"🚫 Bot {referenced_author_id} tidak merespons karena ada pesan manual terbaru.")
             else:
                 responding_bots.append(referenced_author_id)
@@ -263,28 +256,29 @@ def should_respond(data, bot_ids, processed_messages, manual_messages):
     mentions = data.get("mentions", [])
     for user in mentions:
         if user["id"] in bot_ids and user["id"] not in responding_bots:
-            # Cek apakah ada pesan manual terbaru dari bot ini
-            if user["id"] in manual_messages and manual_messages[user["id"]] > message_id:
+            if user["id"] in manual_messages and manual_messages[user["id"]] > message_id and manual_messages[user["id"]] not in auto_message_ids:
                 log_message("info", f"🚫 Bot {user['id']} tidak merespons karena ada pesan manual terbaru.")
             else:
                 responding_bots.append(user["id"])
 
     return responding_bots
 
-def respond_to_message(channel_id, token_name, token, message_content, reply_text, message_reference, bot_id, manual_messages):
+def respond_to_message(channel_id, token_name, token, message_content, reply_text, message_reference, bot_id, manual_messages, auto_message_ids):
     """Function to send a response in a separate thread with manual message check"""
     reply_delay = random.uniform(15, 60)
     log_message("info", f"⏳ [{token_name}] Menunggu {reply_delay:.2f} detik sebelum membalas...")
     time.sleep(reply_delay)
 
     # Cek apakah ada pesan manual terbaru sebelum mengirim
-    if bot_id in manual_messages and manual_messages[bot_id] > message_reference:
+    if bot_id in manual_messages and manual_messages[bot_id] > message_reference and manual_messages[bot_id] not in auto_message_ids:
         log_message("info", f"🚫 [{token_name}] Pesan otomatis dibatalkan karena ada pesan manual terbaru.")
         return
 
-    send_message(channel_id, token_name, token, reply_text, message_reference)
+    message_id = send_message(channel_id, token_name, token, reply_text, message_reference)
+    if message_id:
+        auto_message_ids.add(message_id)  # Tambahkan balasan otomatis ke auto_message_ids
 
-def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, processed_messages, reply_indices, manual_messages):
+def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, processed_messages, reply_indices, manual_messages, auto_message_ids):
     """Polls new messages and processes replies/mentions for multiple bots"""
     global last_processed_id
     while True:
@@ -304,30 +298,27 @@ def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates,
                         message_id = message["id"]
                         author_id = message["author"]["id"]
 
-                        # Deteksi pesan manual (pesan dari bot yang bukan bagian dari polling otomatis)
-                        if author_id in bot_ids and message_id not in processed_messages:
+                        # Deteksi pesan manual (pesan dari bot yang bukan bagian dari auto_message_ids)
+                        if author_id in bot_ids and message_id not in auto_message_ids:
                             manual_messages[author_id] = message_id
                             log_message("info", f"📝 Pesan manual terdeteksi dari bot {author_id}: '{message['content']}' (Message ID: {message_id})")
 
-                        bot_ids_to_respond = should_respond(message, bot_ids, processed_messages, manual_messages)
+                        bot_ids_to_respond = should_respond(message, bot_ids, processed_messages, manual_messages, auto_message_ids)
                         if bot_ids_to_respond:
-                            # Tampilkan pesan yang di-reply/mention di terminal
                             author = message["author"]["username"]
                             content = message["content"]
                             log_message("info", f"🔔 Pesan dari {author}: '{content}'")
 
-                            used_keywords = set()  # Track keywords used for this message
-
+                            used_keywords = set()
                             for bot_id in bot_ids_to_respond:
                                 token = tokens_dict[bot_id]
                                 token_name = names_dict[bot_id]
                                 reply_text, selected_key = get_reply(message["content"], reply_templates, reply_indices, used_keywords)
                                 if reply_text and selected_key:
-                                    used_keywords.add(selected_key)  # Mark this keyword as used
-                                    # Jalankan respons di thread terpisah
+                                    used_keywords.add(selected_key)
                                     thread = threading.Thread(
                                         target=respond_to_message,
-                                        args=(channel_id, token_name, token, message["content"], reply_text, message["id"], bot_id, manual_messages)
+                                        args=(channel_id, token_name, token, message["content"], reply_text, message["id"], bot_id, manual_messages, auto_message_ids)
                                     )
                                     thread.start()
                                 else:
@@ -383,10 +374,7 @@ def main():
         if len(tokens) < 2:
             raise ValueError("⚠️ File token harus berisi minimal 2 akun.")
 
-        # Load templates
         reply_templates = load_templates()
-
-        # Validate tokens
         for token_name, token, _, _ in tokens:
             if not validate_token(token_name, token):
                 return
@@ -403,7 +391,6 @@ def main():
 
         max_delays = int(input(Fore.CYAN + "🔁 Masukkan berapa kali delay: " + Style.RESET_ALL))
         delay_settings = []
-
         for i in range(max_delays):
             delay_after = int(input(Fore.CYAN + f"🔄 Masukkan jumlah pesan sebelum delay {i+1}: " + Style.RESET_ALL))
             delay_time = int(input(Fore.CYAN + f"⏳ Masukkan waktu delay {i+1} dalam detik: " + Style.RESET_ALL))
@@ -411,7 +398,6 @@ def main():
 
         change_interval = input(Fore.CYAN + "⏳ Ganti interval setelah delay tertentu? (y/n): " + Style.RESET_ALL).strip().lower()
         interval_changes = {}
-
         if change_interval == "y":
             num_changes = int(input(Fore.CYAN + "🔄 Berapa kali ganti interval? " + Style.RESET_ALL))
             for _ in range(num_changes):
@@ -420,24 +406,21 @@ def main():
                 new_max_interval = int(input(Fore.CYAN + "🕒 Masukkan max interval baru (detik): " + Style.RESET_ALL))
                 interval_changes[after_delay] = (new_min_interval, new_max_interval)
 
-        # Create dictionaries for mapping bot IDs to tokens and names
         tokens_dict = dict(zip(bot_ids, [token for _, token, _, _ in tokens]))
         names_dict = dict(zip(bot_ids, [name for name, _, _, _ in tokens]))
 
-        # Initialize last_processed_id
         last_processed_id = get_latest_message_id(channel_id, tokens[0][1])
         if last_processed_id is None:
             return
 
-        # Initialize processed messages set, reply indices, and manual messages
         processed_messages = set()
-        reply_indices = {}  # Dictionary to track the next reply index per keyword
-        manual_messages = {}  # Dictionary to track manual messages per bot_id
+        reply_indices = {}
+        manual_messages = {}
+        auto_message_ids = set()  # Set untuk melacak pesan otomatis dari dialog.txt dan balasan otomatis
 
-        # Start polling thread
         polling_thread = threading.Thread(
             target=poll_messages,
-            args=(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, processed_messages, reply_indices, manual_messages)
+            args=(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, processed_messages, reply_indices, manual_messages, auto_message_ids)
         )
         polling_thread.daemon = True
         polling_thread.start()
@@ -467,6 +450,7 @@ def main():
                 message_id = send_message(channel_id, token_name, token, text, message_reference)
                 if message_id:
                     last_message_per_sender[sender_index] = message_id
+                    auto_message_ids.add(message_id)  # Tambahkan pesan dari dialog.txt ke auto_message_ids
 
                 custom_delay = dialog.get("delay", None)
                 if custom_delay:
