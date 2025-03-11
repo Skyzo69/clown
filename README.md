@@ -1,7 +1,6 @@
 # BOT DIALOG
 
-*A simple Discord bot to automate conversations with predefined dialogs, dynamic replies, and manual message cancellation support.*
-
+A stupid Discord bot to automate conversations with predefined dialogs, dynamic replies, and manual message cancellation support, featuring human-like randomized timing patterns.
 ---
 
 ## Prerequisites
