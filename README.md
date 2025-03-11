@@ -14,12 +14,9 @@ Setup Files
 
 Purpose: Stores Discord tokens and their settings.
 
-
 Format: token_name:token:min_interval:max_interval (one per line).
 
-
 Requirements: At least 2 tokens.
-
 
 Example:
 
