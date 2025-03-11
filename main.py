@@ -232,7 +232,7 @@ def get_reply(message, reply_templates, reply_indices, used_keywords):
 
     return reply, selected_key
 
-def should_respond(data, bot_ids, processed_messages):
+def should_respond(data, bot_ids, processed_messages, manual_messages):
     """Determines which bots should respond (returns a list of bot_ids)"""
     message_id = data.get("id")
     if message_id in processed_messages:
@@ -253,24 +253,38 @@ def should_respond(data, bot_ids, processed_messages):
     if referenced_message:
         referenced_author_id = referenced_message.get("author", {}).get("id")
         if referenced_author_id in bot_ids:
-            responding_bots.append(referenced_author_id)
+            # Cek apakah ada pesan manual terbaru dari bot ini
+            if referenced_author_id in manual_messages and manual_messages[referenced_author_id] > message_id:
+                log_message("info", f"🚫 Bot {referenced_author_id} tidak merespons karena ada pesan manual terbaru.")
+            else:
+                responding_bots.append(referenced_author_id)
 
     # Check for mentions
     mentions = data.get("mentions", [])
     for user in mentions:
         if user["id"] in bot_ids and user["id"] not in responding_bots:
-            responding_bots.append(user["id"])
+            # Cek apakah ada pesan manual terbaru dari bot ini
+            if user["id"] in manual_messages and manual_messages[user["id"]] > message_id:
+                log_message("info", f"🚫 Bot {user['id']} tidak merespons karena ada pesan manual terbaru.")
+            else:
+                responding_bots.append(user["id"])
 
     return responding_bots
 
-def respond_to_message(channel_id, token_name, token, message_content, reply_text, message_reference):
-    """Function to send a response in a separate thread"""
+def respond_to_message(channel_id, token_name, token, message_content, reply_text, message_reference, bot_id, manual_messages):
+    """Function to send a response in a separate thread with manual message check"""
     reply_delay = random.uniform(15, 60)
     log_message("info", f"⏳ [{token_name}] Menunggu {reply_delay:.2f} detik sebelum membalas...")
     time.sleep(reply_delay)
+
+    # Cek apakah ada pesan manual terbaru sebelum mengirim
+    if bot_id in manual_messages and manual_messages[bot_id] > message_reference:
+        log_message("info", f"🚫 [{token_name}] Pesan otomatis dibatalkan karena ada pesan manual terbaru.")
+        return
+
     send_message(channel_id, token_name, token, reply_text, message_reference)
 
-def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, processed_messages, reply_indices):
+def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, processed_messages, reply_indices, manual_messages):
     """Polls new messages and processes replies/mentions for multiple bots"""
     global last_processed_id
     while True:
@@ -287,7 +301,15 @@ def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates,
                 messages = response.json()
                 if messages:
                     for message in messages:
-                        bot_ids_to_respond = should_respond(message, bot_ids, processed_messages)
+                        message_id = message["id"]
+                        author_id = message["author"]["id"]
+
+                        # Deteksi pesan manual (pesan dari bot yang bukan bagian dari polling otomatis)
+                        if author_id in bot_ids and message_id not in processed_messages:
+                            manual_messages[author_id] = message_id
+                            log_message("info", f"📝 Pesan manual terdeteksi dari bot {author_id}: '{message['content']}' (Message ID: {message_id})")
+
+                        bot_ids_to_respond = should_respond(message, bot_ids, processed_messages, manual_messages)
                         if bot_ids_to_respond:
                             # Tampilkan pesan yang di-reply/mention di terminal
                             author = message["author"]["username"]
@@ -305,7 +327,7 @@ def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates,
                                     # Jalankan respons di thread terpisah
                                     thread = threading.Thread(
                                         target=respond_to_message,
-                                        args=(channel_id, token_name, token, message["content"], reply_text, message["id"])
+                                        args=(channel_id, token_name, token, message["content"], reply_text, message["id"], bot_id, manual_messages)
                                     )
                                     thread.start()
                                 else:
@@ -407,14 +429,15 @@ def main():
         if last_processed_id is None:
             return
 
-        # Initialize processed messages set and reply indices
+        # Initialize processed messages set, reply indices, and manual messages
         processed_messages = set()
         reply_indices = {}  # Dictionary to track the next reply index per keyword
+        manual_messages = {}  # Dictionary to track manual messages per bot_id
 
         # Start polling thread
         polling_thread = threading.Thread(
             target=poll_messages,
-            args=(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, processed_messages, reply_indices)
+            args=(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, processed_messages, reply_indices, manual_messages)
         )
         polling_thread.daemon = True
         polling_thread.start()
