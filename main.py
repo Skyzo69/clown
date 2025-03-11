@@ -241,7 +241,7 @@ def handle_message(data, bot_id, channel_id, token, token_name):
         reply_text = get_reply(content)
 
         if reply_text:
-            reply_delay = random.uniform(2, 6)  # **Delay khusus untuk reply**
+            reply_delay = random.uniform(15, 60)  # **Delay khusus untuk reply**
             log_message("info", f"⏳ Waiting {reply_delay:.2f} seconds before replying...")
             time.sleep(reply_delay)
 
