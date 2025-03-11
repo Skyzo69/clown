@@ -9,8 +9,7 @@
 - Install dependencies:
   ```bash
   pip install -r requirements.txt
-
-
+  
 Setup Files
 
 ## 1. token.txt
