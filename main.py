@@ -210,23 +210,27 @@ def load_templates(file_path="template.txt"):
         log_message("error", f"❗ Error loading templates: {e}")
     return templates
 
-def get_reply(message, reply_templates, reply_history):
-    """Gets a reply based on message content, prioritizing unused replies"""
-    for key, responses in reply_templates.items():
-        if key in message.lower():
-            used_replies = reply_history.get(key, set())
-            available_replies = [r for r in responses if r not in used_replies]
-            if available_replies:
-                reply = random.choice(available_replies)
-                reply_history[key] = used_replies.union({reply})
-                return reply
-            else:
-                # Reset history if all replies have been used
-                reply_history[key] = set()
-                reply = random.choice(responses)
-                reply_history[key].add(reply)
-                return reply
-    return None
+def get_reply(message, reply_templates, reply_indices, used_keywords):
+    """Gets a reply based on message content, using sequential replies and avoiding used keywords"""
+    available_keys = [key for key in reply_templates if key in message.lower() and key not in used_keywords]
+    if not available_keys:
+        return None, None
+
+    # Pilih keyword yang belum digunakan
+    selected_key = available_keys[0]  # Pilih keyword pertama yang tersedia
+
+    responses = reply_templates[selected_key]
+    if not responses:
+        return None, None
+
+    # Dapatkan indeks balasan berikutnya
+    index = reply_indices.get(selected_key, 0)
+    reply = responses[index]
+
+    # Update indeks untuk balasan berikutnya
+    reply_indices[selected_key] = (index + 1) % len(responses)
+
+    return reply, selected_key
 
 def should_respond(data, bot_ids, processed_messages):
     """Determines which bots should respond (returns a list of bot_ids)"""
@@ -266,7 +270,7 @@ def respond_to_message(channel_id, token_name, token, message_content, reply_tex
     time.sleep(reply_delay)
     send_message(channel_id, token_name, token, reply_text, message_reference)
 
-def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, processed_messages, reply_history):
+def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, processed_messages, reply_indices):
     """Polls new messages and processes replies/mentions for multiple bots"""
     global last_processed_id
     while True:
@@ -290,11 +294,14 @@ def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates,
                             content = message["content"]
                             log_message("info", f"🔔 Pesan dari {author}: '{content}'")
 
+                            used_keywords = set()  # Track keywords used for this message
+
                             for bot_id in bot_ids_to_respond:
                                 token = tokens_dict[bot_id]
                                 token_name = names_dict[bot_id]
-                                reply_text = get_reply(message["content"], reply_templates, reply_history)
-                                if reply_text:
+                                reply_text, selected_key = get_reply(message["content"], reply_templates, reply_indices, used_keywords)
+                                if reply_text and selected_key:
+                                    used_keywords.add(selected_key)  # Mark this keyword as used
                                     # Jalankan respons di thread terpisah
                                     thread = threading.Thread(
                                         target=respond_to_message,
@@ -302,7 +309,7 @@ def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates,
                                     )
                                     thread.start()
                                 else:
-                                    log_message("warning", f"❌ [{token_name}] Tidak ada template yang cocok.")
+                                    log_message("warning", f"❌ [{token_name}] Tidak ada template yang cocok atau keyword sudah digunakan.")
                         last_processed_id = message["id"]
             else:
                 log_message("warning", f"⚠️ Gagal mengambil pesan: {response.status_code}")
@@ -400,14 +407,14 @@ def main():
         if last_processed_id is None:
             return
 
-        # Initialize processed messages set and reply history
+        # Initialize processed messages set and reply indices
         processed_messages = set()
-        reply_history = {}
+        reply_indices = {}  # Dictionary to track the next reply index per keyword
 
         # Start polling thread
         polling_thread = threading.Thread(
             target=poll_messages,
-            args=(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, processed_messages, reply_history)
+            args=(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, processed_messages, reply_indices)
         )
         polling_thread.daemon = True
         polling_thread.start()
