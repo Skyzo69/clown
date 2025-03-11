@@ -151,20 +151,29 @@ def send_message(channel_id, token_name, token, message, message_reference=None)
 
     try:
         response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/messages", json=payload, headers=headers)
+try:
+    with open("dialog.txt", "r", encoding="utf-8") as f:
+        dialog_list = json.load(f)
+        if not dialog_list:
+            raise ValueError("⚠️ dialog.txt file is empty.")
 
-        if response.status_code == 200:
-            message_id = response.json().get('id')
-            log_message("info", f"📩 [{token_name}] Message sent: '{message}' (Message ID: {message_id})")
-            return message_id
-        elif response.status_code == 429:
-            retry_after = response.json().get("retry_after", 1)
-            log_message("warning", f"⚠️ [{token_name}] Rate limit! Waiting {retry_after:.2f} seconds.")
-            time.sleep(retry_after)
-            return send_message(channel_id, token_name, token, message, message_reference)
-        else:
-            log_message("error", f"❌ [{token_name}] Failed to send message: {response.status_code}")
-    except requests.exceptions.RequestException as e:
-        log_message("error", f"❗ Error while sending message: {e}")
+    with open("token.txt", "r") as f:
+        tokens = []
+        for line in f.readlines():
+            parts = line.strip().split(":")
+            if len(parts) != 4:
+                raise ValueError("⚠️ Incorrect token.txt format! Use: token_name:token:min_interval:max_interval")
+            token_name, token, min_interval, max_interval = parts
+            tokens.append((token_name, token, int(min_interval), int(max_interval)))
+
+    if len(tokens) < 2:
+        raise ValueError("⚠️ Token file must contain at least 2 accounts.")
+
+    # Memuat template reply setelah semua pengecekan selesai
+    reply_templates = load_templates()
+
+except (FileNotFoundError, ValueError, json.JSONDecodeError) as e:
+    log_message("error", f"❗ Error: {e}")
 
 def display_token_list(tokens):
     header = ["Token Name", "Min Interval (s)", "Max Interval (s)"]
