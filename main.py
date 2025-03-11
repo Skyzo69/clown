@@ -247,7 +247,7 @@ def handle_message(data, bot_id, channel_id, token, token_name):
         else:
             log_message("warning", "❌ No matching template found. Ignoring.")
 
-        # Validate Tokens
+    try:
         for token_name, token, _, _ in tokens:
             if not validate_token(token_name, token):
                 return  
@@ -281,9 +281,9 @@ def handle_message(data, bot_id, channel_id, token, token_name):
                 new_max_interval = int(input(Fore.CYAN + "🕒 Enter new max interval (seconds): " + Style.RESET_ALL))
                 interval_changes[after_delay] = (new_min_interval, new_max_interval)
 
-        except (FileNotFoundError, ValueError, json.JSONDecodeError) as e:
-            log_message("error", f"❗ Error: {e}")
-            return
+    except (FileNotFoundError, ValueError, json.JSONDecodeError) as e:
+        log_message("error", f"❗ Error: {e}")
+        return
 
     if start_time_minutes > 0:
         countdown(start_time_minutes)
