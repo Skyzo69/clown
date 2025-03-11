@@ -188,7 +188,7 @@ def display_token_list(tokens):
     print(Fore.CYAN + "="*40 + "\n")
 
 def load_templates(file_path="template.txt"):
-    """Loads templates from a file with support for multiple keywords"""
+    """Loads templates from a file with support for multiple keywords separated by |"""
     templates = {}
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -197,7 +197,7 @@ def load_templates(file_path="template.txt"):
             for line in lines:
                 line = line.strip()
                 if line.startswith("[") and line.endswith("]"):
-                    key = line[1:-1].lower().split()  # Split into multiple keywords
+                    key = line[1:-1].lower().split("|")  # Split by |
                     for k in key:
                         if k not in templates:
                             templates[k] = []
@@ -229,34 +229,45 @@ def get_reply(message, reply_templates, reply_history):
     return None
 
 def should_respond(data, bot_ids, processed_messages):
-    """Determines if the bot should respond and which bot should respond"""
+    """Determines which bots should respond (returns a list of bot_ids)"""
     message_id = data.get("id")
     if message_id in processed_messages:
-        return None  # Already processed
+        return []  # Already processed
     processed_messages.add(message_id)
 
     if data.get("edited_timestamp"):
-        return None  # Ignore edited messages
+        return []  # Ignore edited messages
 
     author_id = data.get("author", {}).get("id")
     if author_id in bot_ids:
-        return None  # Ignore messages from the bot itself
+        return []  # Ignore messages from the bot itself
 
+    responding_bots = []
+
+    # Check for reply
     referenced_message = data.get("referenced_message", {})
     if referenced_message:
         referenced_author_id = referenced_message.get("author", {}).get("id")
         if referenced_author_id in bot_ids:
-            return referenced_author_id  # Respond with the bot that was replied to
+            responding_bots.append(referenced_author_id)
 
+    # Check for mentions
     mentions = data.get("mentions", [])
     for user in mentions:
-        if user["id"] in bot_ids:
-            return user["id"]  # Respond with the first mentioned bot
+        if user["id"] in bot_ids and user["id"] not in responding_bots:
+            responding_bots.append(user["id"])
 
-    return None  # No response needed
+    return responding_bots
+
+def respond_to_message(channel_id, token_name, token, message_content, reply_text, message_reference):
+    """Function to send a response in a separate thread"""
+    reply_delay = random.uniform(15, 60)
+    log_message("info", f"⏳ [{token_name}] Menunggu {reply_delay:.2f} detik sebelum membalas...")
+    time.sleep(reply_delay)
+    send_message(channel_id, token_name, token, reply_text, message_reference)
 
 def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, processed_messages, reply_history):
-    """Polls new messages and processes replies/mentions"""
+    """Polls new messages and processes replies/mentions for multiple bots"""
     global last_processed_id
     while True:
         try:
@@ -272,18 +283,26 @@ def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates,
                 messages = response.json()
                 if messages:
                     for message in messages:
-                        bot_id = should_respond(message, bot_ids, processed_messages)
-                        if bot_id:
-                            token = tokens_dict[bot_id]
-                            token_name = names_dict[bot_id]
-                            reply_text = get_reply(message["content"], reply_templates, reply_history)
-                            if reply_text:
-                                reply_delay = random.uniform(15, 60)
-                                log_message("info", f"⏳ Menunggu {reply_delay:.2f} detik sebelum membalas...")
-                                time.sleep(reply_delay)
-                                send_message(channel_id, token_name, token, reply_text, message_reference=message["id"])
-                            else:
-                                log_message("warning", "❌ Tidak ada template yang cocok untuk pesan ini.")
+                        bot_ids_to_respond = should_respond(message, bot_ids, processed_messages)
+                        if bot_ids_to_respond:
+                            # Tampilkan pesan yang di-reply/mention di terminal
+                            author = message["author"]["username"]
+                            content = message["content"]
+                            log_message("info", f"🔔 Pesan dari {author}: '{content}'")
+
+                            for bot_id in bot_ids_to_respond:
+                                token = tokens_dict[bot_id]
+                                token_name = names_dict[bot_id]
+                                reply_text = get_reply(message["content"], reply_templates, reply_history)
+                                if reply_text:
+                                    # Jalankan respons di thread terpisah
+                                    thread = threading.Thread(
+                                        target=respond_to_message,
+                                        args=(channel_id, token_name, token, message["content"], reply_text, message["id"])
+                                    )
+                                    thread.start()
+                                else:
+                                    log_message("warning", f"❌ [{token_name}] Tidak ada template yang cocok.")
                         last_processed_id = message["id"]
             else:
                 log_message("warning", f"⚠️ Gagal mengambil pesan: {response.status_code}")
