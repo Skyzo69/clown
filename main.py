@@ -209,11 +209,11 @@ def main():
         key = None
         for line in lines:
             line = line.strip()
-        if line.startswith("[") and line.endswith("]"):
-            key = line[1:-1].lower()
-            templates[key] = []
-        elif key and line:
-            templates[key].append(line)
+            if line.startswith("[") and line.endswith("]"):
+                key = line[1:-1].lower()
+                templates[key] = []
+            elif key and line:
+                templates[key].append(line)
 
         return templates
 
