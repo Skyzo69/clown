@@ -218,12 +218,12 @@ def main():
     return templates
 
          # **Cari balasan berdasarkan template**
-        def get_reply(message):
-    for key, responses in reply_templates.items():  # <-- Indentasi harus seragam
+def get_reply(message):
+    for key, responses in reply_templates.items():  # Indentasi harus seragam
         if any(word in message.lower() for word in key.split()):
             return random.choice(responses)
-    return None  # <-- Pastikan return sejajar dengan for loop
-
+    return None
+    
 def handle_message(data, bot_id, channel_id, token, token_name):
     content = data.get("content", "")
     mentions = data.get("mentions", [])
