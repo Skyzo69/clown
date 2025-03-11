@@ -49,19 +49,19 @@ A simple Discord bot script to automate conversations based on predefined dialog
 
 - Fields: 
 
-text: Message content.
+  - text: Message content.
 
 
 
-sender: Index of token (0-based).
+  - sender: Index of token (0-based).
 
 
 
-reply_to: Optional, index of previous sender to reply to.
+  - reply_to: Optional, index of previous sender to reply to.
 
 
 
-delay: Optional, custom delay in seconds.
+  - delay: Optional, custom delay in seconds.
 
 
 - Example:
