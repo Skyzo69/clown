@@ -240,16 +240,15 @@ def main():
 
             message_count += 1
 
-            if delay_count < max_delays and delay_count < len(delay_settings) and message_count >= delay_settings[delay_count][0]:
-                log_message("info", f"⏸️ Pausing for {delay_settings[delay_count][1]} seconds... ({delay_count + 1}/{max_delays})")
-                time.sleep(delay_settings[delay_count][1])
-                delay_count += 1
-
-                # Ubah interval setelah delay jika diatur
-            if delay_count in interval_changes:
-                new_min_interval, new_max_interval = interval_changes[delay_count]
-                tokens[sender_index] = (token_name, token, new_min_interval, new_max_interval)  # Simpan perubahan
-                log_message("info", f"⏳ Interval changed to {new_min_interval}-{new_max_interval} seconds after delay {delay_count}/{max_delays}")
+if delay_count < max_delays and delay_count < len(delay_settings) and message_count >= delay_settings[delay_count][0]:
+    log_message("info", f"⏸️ Pausing for {delay_settings[delay_count][1]} seconds... ({delay_count + 1}/{max_delays})")
+    time.sleep(delay_settings[delay_count][1])
+  
+    delay_count += 1
+    if delay_count in interval_changes:
+        new_min_interval, new_max_interval = interval_changes[delay_count]
+        tokens[sender_index] = (token_name, token, new_min_interval, new_max_interval)  # Simpan perubahan
+        log_message("info", f"⏳ Interval changed to {new_min_interval}-{new_max_interval} seconds after delay {delay_count}/{max_delays}")
         except Exception as e:
             log_message("error", f"❗ An error occurred: {e}")
             return
