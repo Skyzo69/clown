@@ -10,6 +10,8 @@ from datetime import datetime, timedelta
 from colorama import Fore, Style, init
 from tabulate import tabulate
 import pyfiglet
+import discord
+from discord.ext import commands
 
 init(autoreset=True)
 
@@ -132,7 +134,6 @@ def typing_indicator(channel_id, token, typing_time):
                 log_message("warning", f"⚠️ Typing request failed: {response.status_code}")
                 break  # Stop kalau gagal
             
-            # Hitung waktu tersisa dan sesuaikan interval
             remaining_time = typing_time - (time.time() - start_time)
             sleep_time = min(remaining_time, 5)  # Maksimum 5 detik
             if sleep_time > 0:
@@ -159,17 +160,17 @@ def send_message(channel_id, token_name, token, message, message_reference=None)
     log_message("info", f"⌨️ Typing for {typing_time:.2f} seconds...")
     time.sleep(typing_time)
 
-    while True:  # Loop untuk retry kalau kena rate limit
+    while True:
         try:
             response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/messages", json=payload, headers=headers)
             if response.status_code == 200:
                 message_id = response.json().get("id")
                 log_message("info", f"📩 [{token_name}] Message sent: '{message}' (Message ID: {message_id})")
                 return message_id
-            elif response.status_code == 429:  # Kalau rate limited
+            elif response.status_code == 429:
                 retry_after = response.json().get("retry_after", 1)
                 log_message("warning", f"⚠️ [{token_name}] Rate limit! Retrying in {retry_after:.2f} seconds...")
-                time.sleep(retry_after)  # Tunggu sebelum coba lagi
+                time.sleep(retry_after)
             else:
                 log_message("error", f"❌ [{token_name}] Failed to send message: {response.status_code}")
                 return None
@@ -214,12 +215,12 @@ def get_reply(message, reply_templates):
             return random.choice(responses)
     return None
 
-def handle_message(data, bot_ids, channel_id, token, token_name, reply_templates):
-    content = data.get("content", "")
-    author_id = data.get("author", {}).get("id")
-    mentions = data.get("mentions", [])
-    message_id = data.get("id")
-    referenced_message = data.get("referenced_message", {})
+def handle_message(message, bot_ids, channel_id, token, token_name, reply_templates):
+    content = message.content
+    author_id = str(message.author.id)
+    mentions = message.mentions
+    message_id = message.id
+    referenced_message = message.reference.resolved if message.reference else None
 
     # Cek apakah pengirim adalah bot yang ada di token.txt
     if author_id in bot_ids:
@@ -227,11 +228,11 @@ def handle_message(data, bot_ids, channel_id, token, token_name, reply_templates
         return
 
     # Cek apakah bot di-mention atau pesan adalah reply ke pesan bot
-    is_mentioned = any(user["id"] in bot_ids for user in mentions)
-    is_reply_to_bot = referenced_message.get("author", {}).get("id") in bot_ids if referenced_message else False
+    is_mentioned = any(str(user.id) in bot_ids for user in mentions)
+    is_reply_to_bot = referenced_message and str(referenced_message.author.id) in bot_ids if referenced_message else False
 
     if is_mentioned or is_reply_to_bot:
-        log_message("info", f"🔔 Mention/Reply dari pengguna lain terdeteksi! Memproses...")
+        log_message("info", f"🔔 Mention/Reply dari pengguna lain terdeteksi! Memproses... ({content})")
 
         # Ambil balasan dari template
         reply_text = get_reply(content, reply_templates)
@@ -241,9 +242,9 @@ def handle_message(data, bot_ids, channel_id, token, token_name, reply_templates
             log_message("info", f"⏳ Menunggu {reply_delay:.2f} detik sebelum membalas...")
             time.sleep(reply_delay)
 
-            send_message(channel_id, token_name, token, reply_text, message_reference=message_id)
+            send_message(channel_id, token_name, token, reply_text, message_id)
         else:
-            log_message("warning", "❌ Tidak ada template yang cocok. Diabaikan.")
+            log_message("warning", f"❌ Tidak ada template yang cocok untuk: {content}")
 
 def main():
     display_banner()
@@ -271,7 +272,7 @@ def main():
                 # Dapatkan ID pengguna dari token
                 user_id = get_user_id_from_token(token)
                 if user_id:
-                    bot_ids.append(user_id)
+                    bot_ids.append(str(user_id))
 
         if len(tokens) < 2:
             raise ValueError("⚠️ File token harus berisi minimal 2 akun.")
@@ -317,60 +318,91 @@ def main():
         log_message("error", f"❗ Error: {e}")
         return
 
-    if start_time_minutes > 0:
-        countdown(start_time_minutes)
+    # Gunakan discord.py untuk bot
+    intents = discord.Intents.default()
+    intents.message_content = True
+    bot = commands.Bot(command_prefix="!", intents=intents)
 
-    log_message("info", "🤖 Memulai percakapan otomatis...")
+    @bot.event
+    async def on_ready():
+        log_message("info", f"🤖 Bot terhubung sebagai {bot.user}")
+        if start_time_minutes > 0:
+            countdown(start_time_minutes)
 
-    last_message_per_sender = {}
-    message_count = 0
-    delay_count = 0
+        log_message("info", "🤖 Memulai percakapan otomatis...")
 
-    for index, dialog in enumerate(dialog_list):
-        try:
-            text = dialog["text"]
-            sender_index = dialog["sender"]
-            reply_to = dialog.get("reply_to", None)
+        last_message_per_sender = {}
+        message_count = 0
+        delay_count = 0
 
-            if sender_index >= len(tokens):
-                log_message("error", f"⚠️ Indeks pengirim {sender_index} di luar batas.")
+        for index, dialog in enumerate(dialog_list):
+            try:
+                text = dialog["text"]
+                sender_index = dialog["sender"]
+                reply_to = dialog.get("reply_to", None)
+
+                if sender_index >= len(tokens):
+                    log_message("error", f"⚠️ Indeks pengirim {sender_index} di luar batas.")
+                    return
+
+                token_name, token, min_interval, max_interval = tokens[sender_index]
+                channel = bot.get_channel(int(channel_id))
+                if not channel:
+                    log_message("error", f"❌ Channel dengan ID {channel_id} tidak ditemukan.")
+                    return
+
+                message_reference = last_message_per_sender.get(reply_to) if reply_to is not None else None
+                if message_reference:
+                    message = await channel.fetch_message(message_reference)
+                    sent_message = await channel.send(text, reference=message)
+                else:
+                    sent_message = await channel.send(text)
+
+                if sent_message:
+                    last_message_per_sender[sender_index] = sent_message.id
+                    log_message("info", f"📩 [{token_name}] Message sent: '{text}' (Message ID: {sent_message.id})")
+
+                custom_delay = dialog.get("delay", None)
+                if custom_delay:
+                    log_message("info", f"⏳ Delay kustom dari JSON terdeteksi: {custom_delay} detik")
+                    time.sleep(custom_delay)
+                    log_message("info", "⏳ Melanjutkan setelah delay kustom...")
+                    continue
+                
+                wait_time = random.uniform(min_interval, max_interval)
+                log_message("info", f"⏳ Menunggu {wait_time:.2f} detik sebelum pesan berikutnya...")
+                time.sleep(wait_time)
+
+                message_count += 1
+
+                if delay_count < max_delays and delay_count < len(delay_settings) and message_count >= delay_settings[delay_count][0]:
+                    log_message("info", f"⏸️ Berhenti selama {delay_settings[delay_count][1]} detik... ({delay_count + 1}/{max_delays})")
+                    time.sleep(delay_settings[delay_count][1])
+                    delay_count += 1
+
+                if delay_count in interval_changes:
+                    new_min_interval, new_max_interval = interval_changes[delay_count]
+                    tokens[sender_index] = (token_name, token, new_min_interval, new_max_interval)
+                    log_message("info", f"⏳ Interval diubah menjadi {new_min_interval}-{new_max_interval} detik setelah delay {delay_count}/{max_delays}")
+
+            except Exception as e:
+                log_message("error", f"❗ Terjadi kesalahan: {e}")
                 return
 
-            token_name, token, min_interval, max_interval = tokens[sender_index]
-            message_reference = last_message_per_sender.get(reply_to) if reply_to is not None else None
+        log_message("info", "🎉 Percakapan selesai.")
 
-            message_id = send_message(channel_id, token_name, token, text, message_reference)
-            if message_id:
-                last_message_per_sender[sender_index] = message_id
-
-            custom_delay = dialog.get("delay", None)
-            if custom_delay:
-                log_message("info", f"⏳ Delay kustom dari JSON terdeteksi: {custom_delay} detik")
-                time.sleep(custom_delay)
-                log_message("info", "⏳ Melanjutkan setelah delay kustom...")
-                continue  
-                
-            wait_time = random.uniform(min_interval, max_interval)
-            log_message("info", f"⏳ Menunggu {wait_time:.2f} detik sebelum pesan berikutnya...")
-            time.sleep(wait_time)
-
-            message_count += 1
-
-            if delay_count < max_delays and delay_count < len(delay_settings) and message_count >= delay_settings[delay_count][0]:
-                log_message("info", f"⏸️ Berhenti selama {delay_settings[delay_count][1]} detik... ({delay_count + 1}/{max_delays})")
-                time.sleep(delay_settings[delay_count][1])
-                delay_count += 1
-
-            if delay_count in interval_changes:
-                new_min_interval, new_max_interval = interval_changes[delay_count]
-                tokens[sender_index] = (token_name, token, new_min_interval, new_max_interval)
-                log_message("info", f"⏳ Interval diubah menjadi {new_min_interval}-{new_max_interval} detik setelah delay {delay_count}/{max_delays}")
-
-        except Exception as e:
-            log_message("error", f"❗ Terjadi kesalahan: {e}")
+    @bot.event
+    async def on_message(message):
+        if message.author == bot.user:
             return
 
-    log_message("info", "🎉 Percakapan selesai.")
+        channel_id_str = str(message.channel.id)
+        if channel_id_str == channel_id:
+            for token_name, token, _, _ in tokens:
+                handle_message(message, [str(bot.user.id)] + [str(id) for id in bot_ids], channel_id, token, token_name, reply_templates)
+
+    # Jalankan bot dengan token pertama (misalnya untuk kontrol)
+    bot.run(tokens[0][1])
 
 if __name__ == "__main__":
     main()
