@@ -8,7 +8,7 @@ import random
 from datetime import datetime, timedelta
 from colorama import Fore, Style, init
 from tabulate import tabulate
-import pyfiglet  
+import pyfiglet
 
 init(autoreset=True)
 
@@ -195,6 +195,59 @@ def main():
 
         if len(tokens) < 2:
             raise ValueError("⚠️ Token file must contain at least 2 accounts.")
+            
+            reply_templates = load_templates()
+
+        except (FileNotFoundError, ValueError, json.JSONDecodeError) as e:
+            log_message("error", f"❗ Error: {e}")
+            return
+
+         # **Baca template dari file**
+        def load_templates(file_path="template.txt"):
+            templates = {}
+            with open(file_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+
+        key = None
+        for line in lines:
+            line = line.strip()
+        if line.startswith("[") and line.endswith("]"):
+            key = line[1:-1].lower()
+            templates[key] = []
+        elif key and line:
+            templates[key].append(line)
+
+        return templates
+
+         # **Cari balasan berdasarkan template**
+        def get_reply(message):
+             for key, responses in reply_templates.items():
+        if any(word in message.lower() for word in key.split()):
+             return random.choice(responses)
+        return None
+
+def handle_message(data, bot_id, channel_id, token, token_name):
+    content = data.get("content", "")
+    mentions = data.get("mentions", [])
+    message_id = data.get("id")
+
+    is_mentioned = any(user["id"] == bot_id for user in mentions)
+    is_reply = "referenced_message" in data
+
+    if is_mentioned or is_reply:
+        log_message("info", f"🔔 Mention/Reply detected! Processing...")
+
+        # **Ambil balasan dari template**
+        reply_text = get_reply(content)
+
+        if reply_text:
+            reply_delay = random.uniform(2, 6)  # **Delay khusus untuk reply**
+            log_message("info", f"⏳ Waiting {reply_delay:.2f} seconds before replying...")
+            time.sleep(reply_delay)
+
+            send_message(channel_id, token_name, token, reply_text, message_reference=message_id)
+        else:
+            log_message("warning", "❌ No matching template found. Ignoring.")
 
         # Validate Tokens
         for token_name, token, _, _ in tokens:
