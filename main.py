@@ -180,28 +180,29 @@ def main():
     display_banner()
 
     try:
-        with open("dialog.txt", "r", encoding="utf-8") as f:
-            dialog_list = json.load(f)
-            if not dialog_list:
-                raise ValueError("⚠️ dialog.txt file is empty.")
+    with open("dialog.txt", "r", encoding="utf-8") as f:
+        dialog_list = json.load(f)
+        if not dialog_list:
+            raise ValueError("⚠️ dialog.txt file is empty.")
 
-        with open("token.txt", "r") as f:
-            tokens = []
-            for line in f.readlines():
-                parts = line.strip().split(":")
-                if len(parts) != 4:
-                    raise ValueError("⚠️ Incorrect token.txt format! Use: token_name:token:min_interval:max_interval")
-                token_name, token, min_interval, max_interval = parts
-                tokens.append((token_name, token, int(min_interval), int(max_interval)))
+    with open("token.txt", "r") as f:
+        tokens = []
+        for line in f.readlines():
+            parts = line.strip().split(":")
+            if len(parts) != 4:
+                raise ValueError("⚠️ Incorrect token.txt format! Use: token_name:token:min_interval:max_interval")
+            token_name, token, min_interval, max_interval = parts
+            tokens.append((token_name, token, int(min_interval), int(max_interval)))
 
-        if len(tokens) < 2:
-            raise ValueError("⚠️ Token file must contain at least 2 accounts.")
-            
-            reply_templates = load_templates()
+    if len(tokens) < 2:
+        raise ValueError("⚠️ Token file must contain at least 2 accounts.")
 
- except (FileNotFoundError, ValueError, json.JSONDecodeError) as e:
-       log_message("error", f"❗ Error: {e}")
-       return
+    # Ini harus tetap dieksekusi meskipun token cukup
+    reply_templates = load_templates()
+
+    except (FileNotFoundError, ValueError, json.JSONDecodeError) as e:
+         log_message("error", f"❗ Error: {e}")
+         return
 
          # **Baca template dari file**
         def load_templates(file_path="template.txt"):
