@@ -103,24 +103,46 @@ def validate_token(token_name, token):
         log_message("error", f"⚠️ Error validating token {token_name}: {e}")
         return False
 
-def typing_indicator(channel_id, token):
+def typing_indicator(channel_id, token, typing_time):
+    """Mengirim typing indicator ke Discord setiap 2 detik agar tetap aktif selama `typing_time`."""
     headers = {'Authorization': token}
-    try:
-        response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/typing", headers=headers)
-        if response.status_code in [200, 204]:
-            log_message("info", "💬 Bot is typing...")
-    except requests.exceptions.RequestException as e:
-        log_message("error", f"❗ Error while sending typing indicator: {e}")
+    start_time = time.time()
 
+    while time.time() - start_time < typing_time:
+        try:
+            response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/typing", headers=headers)
+            if response.status_code in [200, 204]:
+                log_message("info", "💬 Bot is typing...")
+            time.sleep(2)  # Kirim ulang setiap 2 detik agar indikator tetap muncul
+        except requests.exceptions.RequestException as e:
+            log_message("error", f"❗ Error while sending typing indicator: {e}")
+            break  # Stop loop kalau terjadi error
 def send_message(channel_id, token_name, token, message, message_reference=None):
     headers = {'Authorization': token}
     payload = {'content': message}
     if message_reference:
         payload['message_reference'] = {'message_id': message_reference}
-    
+
+    # **Hitung waktu mengetik berdasarkan jumlah kata**
+    word_count = len(message.split())
+
+    if word_count <= 3:
+        typing_time = random.uniform(1, 4)
+    elif word_count <= 10:
+        typing_time = random.uniform(4, 9)
+    else:
+        typing_time = random.uniform(10, 16)
+
+    # **Jalankan typing indicator di thread terpisah**
+    thread = threading.Thread(target=typing_indicator, args=(channel_id, token, typing_time))
+    thread.start()
+
+    log_message("info", f"⌨️ Typing for {typing_time:.2f} seconds...")
+
+    # **Tunggu sebelum kirim pesan**
+    time.sleep(typing_time)
+
     try:
-        typing_indicator(channel_id, token)
-        time.sleep(2)
         response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/messages", json=payload, headers=headers)
 
         if response.status_code == 200:
@@ -227,19 +249,6 @@ def main():
 
             token_name, token, min_interval, max_interval = tokens[sender_index]
             message_reference = last_message_per_sender.get(reply_to) if reply_to is not None else None
-
-            word_count = len(text.split())
-
-            if word_count <= 3:
-                typing_time = random.uniform(1, 4)
-            elif word_count <= 10:
-                typing_time = random.uniform(4, 9)
-            else:
-                typing_time = random.uniform(10, 16)
-
-            print(f"⌨️ Typing for {typing_time:.2f} seconds...")
-
-            time.sleep(typing_time)
 
             message_id = send_message(channel_id, token_name, token, text, message_reference)
             if message_id:
