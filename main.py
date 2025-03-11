@@ -203,7 +203,7 @@ def main():
          # **Baca template dari file**
         def load_templates(file_path="template.txt"):
             templates = {}
-            with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             lines = f.readlines()
 
         key = None
