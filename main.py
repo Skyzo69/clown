@@ -131,49 +131,37 @@ def typing_indicator(channel_id, token, typing_time):
             break  # Stop loop kalau error
 
 def send_message(channel_id, token_name, token, message, message_reference=None):
-    headers = {'Authorization': token}
-    payload = {'content': message}
+    headers = {"Authorization": token, "Content-Type": "application/json"}
+    payload = {"content": message}
     if message_reference:
-        payload['message_reference'] = {'message_id': message_reference}
+        payload["message_reference"] = {"message_id": message_reference}
 
-    # **Hitung waktu mengetik berdasarkan jumlah kata (lebih fleksibel)**
     word_count = len(message.split())
     typing_time = random.uniform(0.4 * word_count, 0.7 * word_count)
 
-    # **Jalankan typing indicator di thread terpisah**
     thread = threading.Thread(target=typing_indicator, args=(channel_id, token, typing_time))
     thread.start()
 
     log_message("info", f"⌨️ Typing for {typing_time:.2f} seconds...")
-
-    # **Tunggu sebelum kirim pesan**
     time.sleep(typing_time)
 
-    try:
-        response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/messages", json=payload, headers=headers)
-try:
-    with open("dialog.txt", "r", encoding="utf-8") as f:
-        dialog_list = json.load(f)
-        if not dialog_list:
-            raise ValueError("⚠️ dialog.txt file is empty.")
-
-    with open("token.txt", "r") as f:
-        tokens = []
-        for line in f.readlines():
-            parts = line.strip().split(":")
-            if len(parts) != 4:
-                raise ValueError("⚠️ Incorrect token.txt format! Use: token_name:token:min_interval:max_interval")
-            token_name, token, min_interval, max_interval = parts
-            tokens.append((token_name, token, int(min_interval), int(max_interval)))
-
-    if len(tokens) < 2:
-        raise ValueError("⚠️ Token file must contain at least 2 accounts.")
-
-    # Memuat template reply setelah semua pengecekan selesai
-    reply_templates = load_templates()
-
-except (FileNotFoundError, ValueError, json.JSONDecodeError) as e:
-    log_message("error", f"❗ Error: {e}")
+    while True:  # Loop untuk retry kalau kena rate limit
+        try:
+            response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/messages", json=payload, headers=headers)
+            if response.status_code == 200:
+                message_id = response.json().get("id")
+                log_message("info", f"📩 [{token_name}] Message sent: '{message}' (Message ID: {message_id})")
+                return message_id
+            elif response.status_code == 429:  # Kalau rate limited
+                retry_after = response.json().get("retry_after", 1)
+                log_message("warning", f"⚠️ [{token_name}] Rate limit! Retrying in {retry_after:.2f} seconds...")
+                time.sleep(retry_after)  # Tunggu sebelum coba lagi
+            else:
+                log_message("error", f"❌ [{token_name}] Failed to send message: {response.status_code}")
+                return None
+        except requests.exceptions.RequestException as e:
+            log_message("error", f"❗ Error while sending message: {e}")
+            return None
 
 def display_token_list(tokens):
     header = ["Token Name", "Min Interval (s)", "Max Interval (s)"]
@@ -208,7 +196,7 @@ def main():
             
             reply_templates = load_templates()
 
-   except (FileNotFoundError, ValueError, json.JSONDecodeError) as e:
+    except (FileNotFoundError, ValueError, json.JSONDecodeError) as e:
         log_message("error", f"❗ Error: {e}")
         return
 
