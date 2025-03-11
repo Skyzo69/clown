@@ -182,27 +182,27 @@ def main():
         if start_time_minutes < 0:
             raise ValueError("⚠️ Start time cannot be negative.")
 
-          # 1️⃣ Input jumlah delay yang diinginkan
+           # 1️⃣ Input jumlah delay yang diinginkan
         max_delays = int(input(Fore.CYAN + "🔁 Enter how many times to delay: " + Style.RESET_ALL))
         delay_settings = []
 
-          # 2️⃣ Input jumlah pesan sebelum delay & durasi delay per tahap
-        for i in range(max_delays):
+           # 2️⃣ Input jumlah pesan sebelum delay & durasi delay per tahap
+    for i in range(max_delays):
         delay_after = int(input(Fore.CYAN + f"🔄 Enter how many messages before delay {i+1}: " + Style.RESET_ALL))
         delay_time = int(input(Fore.CYAN + f"⏳ Enter delay {i+1} time in seconds: " + Style.RESET_ALL))
         delay_settings.append((delay_after, delay_time))
 
-          # 3️⃣ Input apakah interval berubah setelah delay
-        change_interval = input(Fore.CYAN + "⏳ Change interval after certain delays? (y/n): " + Style.RESET_ALL).strip().lower()
-        interval_changes = {}
+           # 3️⃣ Input apakah interval berubah setelah delay
+       change_interval = input(Fore.CYAN + "⏳ Change interval after certain delays? (y/n): " + Style.RESET_ALL).strip().lower()
+       interval_changes = {}
 
-        if change_interval == "y":
-        num_changes = int(input(Fore.CYAN + "🔄 How many interval changes? " + Style.RESET_ALL))
-        for _ in range(num_changes):
+    if change_interval == "y":
+       num_changes = int(input(Fore.CYAN + "🔄 How many interval changes? " + Style.RESET_ALL))
+    for _ in range(num_changes):
         after_delay = int(input(Fore.CYAN + "🕒 After which delay number? " + Style.RESET_ALL))
         new_min_interval = int(input(Fore.CYAN + "🕒 Enter new min interval (seconds): " + Style.RESET_ALL))
         new_max_interval = int(input(Fore.CYAN + "🕒 Enter new max interval (seconds): " + Style.RESET_ALL))
-        interval_changes[after_delay] = (new_min_interval, new_max_interval))
+        interval_changes[after_delay] = (new_min_interval, new_max_interval)  # Perbaikan tanda kurung
 
     except (FileNotFoundError, ValueError, json.JSONDecodeError) as e:
         log_message("error", f"❗ Error: {e}")
