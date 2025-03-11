@@ -127,10 +127,10 @@ def send_message(channel_id, token_name, token, message, message_reference=None)
     # **Hitung waktu mengetik berdasarkan jumlah kata**
     word_count = len(message.split())
 
-    if word_count <= 3:
-        typing_time = random.uniform(1, 4)
+    if word_count <= 4:
+        typing_time = random.uniform(2, 4)
     elif word_count <= 10:
-        typing_time = random.uniform(4, 9)
+        typing_time = random.uniform(4, 8)
     else:
         typing_time = random.uniform(10, 16)
 
