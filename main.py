@@ -152,8 +152,8 @@ def main():
     try:
         with open("dialog.txt", "r", encoding="utf-8") as f:
             dialog_list = json.load(f)
-        if not dialog_list:
-            raise ValueError("❌ dialog.txt file is empty.")
+            if not dialog_list:
+                raise ValueError("⚠️ dialog.txt file is empty.")
 
         with open("token.txt", "r") as f:
             tokens = []
@@ -167,7 +167,7 @@ def main():
         if len(tokens) < 2:
             raise ValueError("⚠️ Token file must contain at least 2 accounts.")
 
-        # **Validate Tokens Before Proceeding**
+        # Validate Tokens
         for token_name, token, _, _ in tokens:
             if not validate_token(token_name, token):
                 return  
@@ -182,27 +182,27 @@ def main():
         if start_time_minutes < 0:
             raise ValueError("⚠️ Start time cannot be negative.")
 
-           # 1️⃣ Input jumlah delay yang diinginkan
+        # 1️⃣ Input jumlah delay yang diinginkan
         max_delays = int(input(Fore.CYAN + "🔁 Enter how many times to delay: " + Style.RESET_ALL))
         delay_settings = []
 
-           # 2️⃣ Input jumlah pesan sebelum delay & durasi delay per tahap
-    for i in range(max_delays):
-        delay_after = int(input(Fore.CYAN + f"🔄 Enter how many messages before delay {i+1}: " + Style.RESET_ALL))
-        delay_time = int(input(Fore.CYAN + f"⏳ Enter delay {i+1} time in seconds: " + Style.RESET_ALL))
-        delay_settings.append((delay_after, delay_time))
+        # 2️⃣ Input jumlah pesan sebelum delay & durasi delay per tahap
+        for i in range(max_delays):
+            delay_after = int(input(Fore.CYAN + f"🔄 Enter how many messages before delay {i+1}: " + Style.RESET_ALL))
+            delay_time = int(input(Fore.CYAN + f"⏳ Enter delay {i+1} time in seconds: " + Style.RESET_ALL))
+            delay_settings.append((delay_after, delay_time))
 
-           # 3️⃣ Input apakah interval berubah setelah delay
-       change_interval = input(Fore.CYAN + "⏳ Change interval after certain delays? (y/n): " + Style.RESET_ALL).strip().lower()
-       interval_changes = {}
+        # 3️⃣ Input apakah interval berubah setelah delay
+        change_interval = input(Fore.CYAN + "⏳ Change interval after certain delays? (y/n): " + Style.RESET_ALL).strip().lower()
+        interval_changes = {}
 
-    if change_interval == "y":
-       num_changes = int(input(Fore.CYAN + "🔄 How many interval changes? " + Style.RESET_ALL))
-    for _ in range(num_changes):
-        after_delay = int(input(Fore.CYAN + "🕒 After which delay number? " + Style.RESET_ALL))
-        new_min_interval = int(input(Fore.CYAN + "🕒 Enter new min interval (seconds): " + Style.RESET_ALL))
-        new_max_interval = int(input(Fore.CYAN + "🕒 Enter new max interval (seconds): " + Style.RESET_ALL))
-        interval_changes[after_delay] = (new_min_interval, new_max_interval)  # Perbaikan tanda kurung
+        if change_interval == "y":
+            num_changes = int(input(Fore.CYAN + "🔄 How many interval changes? " + Style.RESET_ALL))
+            for _ in range(num_changes):
+                after_delay = int(input(Fore.CYAN + "🕒 After which delay number? " + Style.RESET_ALL))
+                new_min_interval = int(input(Fore.CYAN + "🕒 Enter new min interval (seconds): " + Style.RESET_ALL))
+                new_max_interval = int(input(Fore.CYAN + "🕒 Enter new max interval (seconds): " + Style.RESET_ALL))
+                interval_changes[after_delay] = (new_min_interval, new_max_interval)
 
     except (FileNotFoundError, ValueError, json.JSONDecodeError) as e:
         log_message("error", f"❗ Error: {e}")
@@ -214,6 +214,8 @@ def main():
     log_message("info", "🤖 Starting automatic conversation...")
 
     last_message_per_sender = {}
+    message_count = 0
+    delay_count = 0
 
     for index, dialog in enumerate(dialog_list):
         try:
@@ -226,7 +228,6 @@ def main():
                 return
 
             token_name, token, min_interval, max_interval = tokens[sender_index]
-
             message_reference = last_message_per_sender.get(reply_to) if reply_to is not None else None
 
             message_id = send_message(channel_id, token_name, token, text, message_reference)
@@ -236,18 +237,18 @@ def main():
             wait_time = random.uniform(min_interval, max_interval)
             log_message("info", f"⏳ Waiting {wait_time:.2f} seconds before the next message...")
             time.sleep(wait_time)
-            
+
             message_count += 1
 
-if delay_count < max_delays and delay_count < len(delay_settings) and message_count >= delay_settings[delay_count][0]:
-    log_message("info", f"⏸️ Pausing for {delay_settings[delay_count][1]} seconds... ({delay_count + 1}/{max_delays})")
-    time.sleep(delay_settings[delay_count][1])
-    delay_count += 1
+            if delay_count < max_delays and delay_count < len(delay_settings) and message_count >= delay_settings[delay_count][0]:
+                log_message("info", f"⏸️ Pausing for {delay_settings[delay_count][1]} seconds... ({delay_count + 1}/{max_delays})")
+                time.sleep(delay_settings[delay_count][1])
+                delay_count += 1
 
-    # Ubah interval setelah delay jika diatur
-    if delay_count in interval_changes:
-        min_interval, max_interval = interval_changes[delay_count]
-        log_message("info", f"⏳ Interval changed to {min_interval}-{max_interval} seconds after delay {delay_count}/{max_delays}")
+                # Ubah interval setelah delay jika diatur
+                if delay_count in interval_changes:
+                    min_interval, max_interval = interval_changes[delay_count]
+                    log_message("info", f"⏳ Interval changed to {min_interval}-{max_interval} seconds after delay {delay_count}/{max_delays}")
 
         except Exception as e:
             log_message("error", f"❗ An error occurred: {e}")
