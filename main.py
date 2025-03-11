@@ -207,15 +207,15 @@ def main():
             lines = f.readlines()
 
         key = None
-        for line in lines:
-            line = line.strip()
-            if line.startswith("[") and line.endswith("]"):
-                key = line[1:-1].lower()
-                templates[key] = []
-            elif key and line:
-                templates[key].append(line)
+    for line in lines:
+        line = line.strip()
+        if line.startswith("[") and line.endswith("]"):
+            key = line[1:-1].lower()
+            templates[key] = []
+        elif key and line:
+            templates[key].append(line)
 
-        return templates
+    return templates
 
          # **Cari balasan berdasarkan template**
         def get_reply(message):
