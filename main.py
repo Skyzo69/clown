@@ -223,12 +223,12 @@ def main():
             sender_index = dialog["sender"]
             reply_to = dialog.get("reply_to", None)
 
-        if sender_index >= len(tokens):
-            log_message("error", f"⚠️ Sender index {sender_index} is out of bounds.")
-            return
+            if sender_index >= len(tokens):
+                log_message("error", f"⚠️ Sender index {sender_index} is out of bounds.")
+                return
 
-        token_name, token, min_interval, max_interval = tokens[sender_index]
-        message_reference = last_message_per_sender.get(reply_to) if reply_to is not None else None
+            token_name, token, min_interval, max_interval = tokens[sender_index]
+            message_reference = last_message_per_sender.get(reply_to) if reply_to is not None else None
 
         # Simulasi waktu mengetik sebelum pesan dikirim
         word_count = len(text.split())
