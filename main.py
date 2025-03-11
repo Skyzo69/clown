@@ -233,11 +233,11 @@ def main():
         # Simulasi waktu mengetik sebelum pesan dikirim
         word_count = len(text.split())
         if word_count <= 3:
-            typing_time = random.uniform(2, 4)
+            typing_time = random.uniform(1, 4)
         elif word_count <= 10:
             typing_time = random.uniform(4, 9)
         else:
-            typing_time = random.uniform(10, 20)
+            typing_time = random.uniform(10, 16)
 
         log_message("info", f"⌨️ Typing for {typing_time:.2f} seconds...")
         time.sleep(typing_time)
