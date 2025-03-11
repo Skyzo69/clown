@@ -281,7 +281,7 @@ def handle_message(data, bot_id, channel_id, token, token_name):
                 new_max_interval = int(input(Fore.CYAN + "🕒 Enter new max interval (seconds): " + Style.RESET_ALL))
                 interval_changes[after_delay] = (new_min_interval, new_max_interval)
 
-    except (FileNotFoundError, ValueError, json.JSONDecodeError) as e:
+except (FileNotFoundError, ValueError, json.JSONDecodeError) as e:
         log_message("error", f"❗ Error: {e}")
         return
 
