@@ -199,9 +199,9 @@ def main():
             
             reply_templates = load_templates()
 
-        except (FileNotFoundError, ValueError, json.JSONDecodeError) as e:
-            log_message("error", f"❗ Error: {e}")
-            return
+ except (FileNotFoundError, ValueError, json.JSONDecodeError) as e:
+       log_message("error", f"❗ Error: {e}")
+       return
 
          # **Baca template dari file**
         def load_templates(file_path="template.txt"):
