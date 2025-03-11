@@ -22,16 +22,9 @@ def log_message(level, message):
     """Prints a message with color and logs it to a file"""
     current_time = get_current_time()
     full_message = f"[{current_time}] {message}"
-
-    colors = {
-        "info": Fore.GREEN,
-        "warning": Fore.YELLOW,
-        "error": Fore.RED
-    }
-
+    colors = {"info": Fore.GREEN, "warning": Fore.YELLOW, "error": Fore.RED}
     color = colors.get(level, Fore.WHITE)
     print(color + full_message)
-
     if level == "info":
         logging.info(full_message)
     elif level == "warning":
@@ -59,36 +52,30 @@ def display_progress_bar(progress, total):
 
 def countdown(start_time_minutes):
     total_seconds = start_time_minutes * 60
-
     if start_time_minutes >= 60:
         hours = start_time_minutes // 60
         minutes = start_time_minutes % 60
         log_message("info", f"\n🕒 Starting in {hours} hours {minutes} minutes...\n")
-
     while total_seconds > 0:
         time_str = format_time(total_seconds)
         bar = display_progress_bar(total_seconds, start_time_minutes * 60)
-
         print(Fore.CYAN + f"\r⏳ {bar} {time_str} remaining...", end="", flush=True)
-
-        if total_seconds > 600:  # If more than 10 minutes, update every 5 minutes
+        if total_seconds > 600:
             sleep_time = 300
-        elif total_seconds > 300:  # If more than 5 minutes, update every 1 minute
+        elif total_seconds > 300:
             sleep_time = 60
-        elif total_seconds > 60:  # If more than 1 minute, update every 30 seconds
+        elif total_seconds > 60:
             sleep_time = 30
-        elif total_seconds > 10:  # If more than 10 seconds, update every 10 seconds
+        elif total_seconds > 10:
             sleep_time = 10
-        else:  # Final 10-second countdown
+        else:
             for i in range(total_seconds, 0, -1):
                 bar = display_progress_bar(i, start_time_minutes * 60)
                 print(Fore.RED + f"\r⏳ {bar} {i} seconds remaining... ", end="", flush=True)
                 time.sleep(1)
             break
-
         time.sleep(sleep_time)
-        total_seconds -= sleep_time  # Decrease time based on sleep duration
-
+        total_seconds -= sleep_time
     print(Fore.GREEN + "\n🚀 Starting now!\n")
 
 def validate_token(token_name, token):
@@ -122,54 +109,45 @@ def get_user_id_from_token(token):
 def typing_indicator(channel_id, token, typing_time):
     headers = {'Authorization': token}
     start_time = time.time()
-
-    log_message("info", f"💬 Bot is typing for {typing_time:.2f} seconds...")  # Log hanya sekali
-
+    log_message("info", f"💬 Bot is typing for {typing_time:.2f} seconds...")
     while time.time() - start_time < typing_time:
         try:
             response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/typing", headers=headers)
             if response.status_code not in [200, 204]:
                 log_message("warning", f"⚠️ Typing request failed: {response.status_code}")
-                break  # Stop kalau gagal
-
-            # Hitung waktu tersisa dan sesuaikan interval
+                break
             remaining_time = typing_time - (time.time() - start_time)
-            sleep_time = min(remaining_time, 5)  # Maksimum 5 detik
+            sleep_time = min(remaining_time, 5)
             if sleep_time > 0:
                 time.sleep(sleep_time)
             else:
-                break  # Kalau waktu habis, stop loop
-
+                break
         except requests.exceptions.RequestException as e:
             log_message("error", f"❗ Error while sending typing indicator: {e}")
-            break  # Stop loop kalau error
+            break
 
 def send_message(channel_id, token_name, token, message, message_reference=None):
     headers = {"Authorization": token, "Content-Type": "application/json"}
     payload = {"content": message}
     if message_reference:
         payload["message_reference"] = {"message_id": message_reference}
-
     word_count = len(message.split())
     typing_time = random.uniform(0.4 * word_count, 0.7 * word_count)
-
     thread = threading.Thread(target=typing_indicator, args=(channel_id, token, typing_time))
     thread.start()
-
     log_message("info", f"⌨️ Typing for {typing_time:.2f} seconds...")
     time.sleep(typing_time)
-
-    while True:  # Loop untuk retry kalau kena rate limit
+    while True:
         try:
             response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/messages", json=payload, headers=headers)
             if response.status_code == 200:
                 message_id = response.json().get("id")
                 log_message("info", f"📩 [{token_name}] Message sent: '{message}' (Message ID: {message_id})")
                 return message_id
-            elif response.status_code == 429:  # Kalau rate limited
+            elif response.status_code == 429:
                 retry_after = response.json().get("retry_after", 1)
                 log_message("warning", f"⚠️ [{token_name}] Rate limit! Retrying in {retry_after:.2f} seconds...")
-                time.sleep(retry_after)  # Tunggu sebelum coba lagi
+                time.sleep(retry_after)
             else:
                 log_message("error", f"❌ [{token_name}] Failed to send message: {response.status_code}")
                 return None
@@ -180,7 +158,6 @@ def send_message(channel_id, token_name, token, message, message_reference=None)
 def display_token_list(tokens):
     header = ["Token Name", "Min Interval (s)", "Max Interval (s)"]
     table = [(name, min_interval, max_interval) for name, _, min_interval, max_interval in tokens]
-
     print(Fore.CYAN + "\n" + "="*40)
     print(Fore.YELLOW + "           🎛️ TOKEN LIST")
     print(Fore.CYAN + "="*40)
@@ -197,7 +174,7 @@ def load_templates(file_path="template.txt"):
             for line in lines:
                 line = line.strip()
                 if line.startswith("[") and line.endswith("]"):
-                    key = line[1:-1].lower().split("|")  # Split by |
+                    key = line[1:-1].lower().split("|")
                     for k in key:
                         if k not in templates:
                             templates[k] = []
@@ -215,29 +192,19 @@ def get_reply(message, reply_templates, reply_indices, used_keywords):
     available_keys = [key for key in reply_templates if key in message.lower() and key not in used_keywords]
     if not available_keys:
         return None, None
-
-    # Pilih keyword yang belum digunakan
-    selected_key = available_keys[0]  # Pilih keyword pertama yang tersedia
-
+    selected_key = available_keys[0]
     responses = reply_templates[selected_key]
     if not responses:
         return None, None
-
-    # Dapatkan indeks balasan berikutnya
     index = reply_indices.get(selected_key, 0)
     reply = responses[index]
-
-    # Update indeks untuk balasan berikutnya
     reply_indices[selected_key] = (index + 1) % len(responses)
-
     return reply, selected_key
 
-def get_manual_reply_after_last_bot_message(last_bot_message_id, user_id, token, channel_id):
-    """Mendapatkan pesan terbaru dari pengguna setelah pesan terakhir bot"""
+def get_latest_user_message_id(channel_id, user_id, token):
+    """Mendapatkan ID pesan terakhir dari pengguna di channel"""
     headers = {"Authorization": token}
     params = {"limit": 100}
-    if last_bot_message_id:
-        params["after"] = last_bot_message_id  # Ambil pesan setelah pesan terakhir bot
     response = requests.get(
         f"https://discord.com/api/v9/channels/{channel_id}/messages",
         headers=headers,
@@ -247,60 +214,72 @@ def get_manual_reply_after_last_bot_message(last_bot_message_id, user_id, token,
         messages = response.json()
         for msg in messages:
             if msg["author"]["id"] == user_id:
-                return msg["content"]  # Kembalikan konten pesan jika ditemukan
+                return msg["id"]
     return None
 
-def should_respond(data, bot_ids, processed_messages, user_id, token, channel_id, last_bot_message_id):
+def check_user_activity_during_delay(last_user_message_id, user_id, token, channel_id):
+    """Mengecek apakah pengguna telah mengirim pesan baru di channel"""
+    headers = {"Authorization": token}
+    params = {"limit": 100, "after": last_user_message_id}
+    response = requests.get(
+        f"https://discord.com/api/v9/channels/{channel_id}/messages",
+        headers=headers,
+        params=params
+    )
+    if response.status_code == 200:
+        messages = response.json()
+        for msg in messages:
+            if msg["author"]["id"] == user_id:
+                return True
+    return False
+
+def should_respond(data, bot_ids, processed_messages):
     """Determines which bots should respond (returns a list of bot_ids)"""
     message_id = data.get("id")
     if message_id in processed_messages:
-        return []  # Already processed
+        return []
     processed_messages.add(message_id)
-
     if data.get("edited_timestamp"):
-        return []  # Ignore edited messages
-
+        return []
     author_id = data.get("author", {}).get("id")
     if author_id in bot_ids:
-        return []  # Ignore messages from the bot itself
-
+        return []
     responding_bots = []
-
-    # Check for reply
     referenced_message = data.get("referenced_message", {})
     if referenced_message:
         referenced_author_id = referenced_message.get("author", {}).get("id")
         if referenced_author_id in bot_ids:
             responding_bots.append(referenced_author_id)
-
-    # Check for mentions
     mentions = data.get("mentions", [])
     for user in mentions:
         if user["id"] in bot_ids and user["id"] not in responding_bots:
             responding_bots.append(user["id"])
-
-    # Periksa apakah pengguna sudah mengirim pesan setelah pesan terakhir bot
-    if last_bot_message_id:
-        manual_reply = get_manual_reply_after_last_bot_message(last_bot_message_id, user_id, token, channel_id)
-        if manual_reply:
-            log_message("info", f"🛑 Pengguna telah mengirim pesan setelah bot: '{manual_reply}'. Membatalkan balasan otomatis.")
-            return []  # Batalkan balasan otomatis jika pengguna sudah mengirim pesan
-
     return responding_bots
 
-def respond_to_message(channel_id, token_name, token, message_content, reply_text, message_reference):
-    """Function to send a response in a separate thread"""
+def respond_to_message(channel_id, token_name, token, reply_text, message_reference, user_id, last_user_message_id):
+    """Function to send a response with cancellation check based on user activity"""
     reply_delay = random.uniform(15, 60)
+    start_time = time.time()
+    check_interval = 5  # Periksa setiap 5 detik
     log_message("info", f"⏳ [{token_name}] Menunggu {reply_delay:.2f} detik sebelum membalas...")
-    time.sleep(reply_delay)
+    
+    while time.time() - start_time < reply_delay:
+        if check_user_activity_during_delay(last_user_message_id, user_id, token, channel_id):
+            log_message("info", f"🛑 [{token_name}] Pengguna telah mengirim pesan di channel. Membatalkan balasan otomatis.")
+            return None
+        time.sleep(check_interval)
+    
+    # Pengecekan terakhir sebelum mengirim
+    if check_user_activity_during_delay(last_user_message_id, user_id, token, channel_id):
+        log_message("info", f"🛑 [{token_name}] Pengguna telah mengirim pesan di channel. Membatalkan balasan otomatis.")
+        return None
+    
     message_id = send_message(channel_id, token_name, token, reply_text, message_reference)
     return message_id
 
 def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, processed_messages, reply_indices, user_id):
     """Polls new messages and processes replies/mentions for multiple bots"""
     global last_processed_id
-    last_bot_message_id = None  # Track ID pesan terakhir dari bot
-
     while True:
         try:
             params = {"limit": 100}
@@ -315,24 +294,22 @@ def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates,
                 messages = response.json()
                 if messages:
                     for message in messages:
-                        bot_ids_to_respond = should_respond(message, bot_ids, processed_messages, user_id, tokens_dict[bot_ids[0]], channel_id, last_bot_message_id)
+                        bot_ids_to_respond = should_respond(message, bot_ids, processed_messages)
                         if bot_ids_to_respond:
-                            # Tampilkan pesan yang di-reply/mention di terminal
                             author = message["author"]["username"]
                             content = message["content"]
                             log_message("info", f"🔔 Pesan dari {author}: '{content}'")
-
-                            used_keywords = set()  # Track keywords used for this message
-
+                            used_keywords = set()
+                            last_user_message_id = get_latest_user_message_id(channel_id, user_id, tokens_dict[bot_ids[0]])
                             for bot_id in bot_ids_to_respond:
                                 token = tokens_dict[bot_id]
                                 token_name = names_dict[bot_id]
                                 reply_text, selected_key = get_reply(message["content"], reply_templates, reply_indices, used_keywords)
                                 if reply_text and selected_key:
-                                    used_keywords.add(selected_key)  # Mark this keyword as used
-                                    # Jalankan respons di thread terpisah dan simpan ID pesan terakhir bot
+                                    used_keywords.add(selected_key)
                                     thread = threading.Thread(
-                                        target=lambda: globals().__setitem__('last_bot_message_id', respond_to_message(channel_id, token_name, token, message["content"], reply_text, message["id"]))
+                                        target=respond_to_message,
+                                        args=(channel_id, token_name, token, reply_text, message["id"], user_id, last_user_message_id)
                                     )
                                     thread.start()
                                 else:
@@ -342,7 +319,7 @@ def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates,
                 log_message("warning", f"⚠️ Gagal mengambil pesan: {response.status_code}")
         except Exception as e:
             log_message("error", f"❗ Error dalam polling: {e}")
-        time.sleep(5)  # Poll every 5 seconds
+        time.sleep(5)
 
 def get_latest_message_id(channel_id, token):
     """Fetches the latest message ID in the channel"""
@@ -360,13 +337,11 @@ def get_latest_message_id(channel_id, token):
 def main():
     global last_processed_id
     display_banner()
-
     try:
         with open("dialog.txt", "r", encoding="utf-8") as f:
             dialog_list = json.load(f)
             if not dialog_list:
                 raise ValueError("⚠️ dialog.txt file is empty.")
-
         with open("token.txt", "r") as f:
             tokens = []
             bot_ids = []
@@ -384,39 +359,27 @@ def main():
                 user_id = get_user_id_from_token(token)
                 if user_id:
                     bot_ids.append(user_id)
-
         if len(tokens) < 2:
             raise ValueError("⚠️ File token harus berisi minimal 2 akun.")
-
-        # Load templates
         reply_templates = load_templates()
-
-        # Validate tokens
         for token_name, token, _, _ in tokens:
             if not validate_token(token_name, token):
                 return
-
         display_token_list(tokens)
-
         channel_id = input(Fore.CYAN + "🔢 Masukkan ID channel: " + Style.RESET_ALL).strip()
         if not channel_id.isdigit():
             raise ValueError("⚠️ ID channel harus berupa angka.")
-
         start_time_minutes = int(input(Fore.CYAN + "⏳ Masukkan waktu mulai dalam menit (0 untuk mulai langsung): " + Style.RESET_ALL))
         if start_time_minutes < 0:
             raise ValueError("⚠️ Waktu mulai tidak boleh negatif.")
-
         max_delays = int(input(Fore.CYAN + "🔁 Masukkan berapa kali delay: " + Style.RESET_ALL))
         delay_settings = []
-
         for i in range(max_delays):
             delay_after = int(input(Fore.CYAN + f"🔄 Masukkan jumlah pesan sebelum delay {i+1}: " + Style.RESET_ALL))
             delay_time = int(input(Fore.CYAN + f"⏳ Masukkan waktu delay {i+1} dalam detik: " + Style.RESET_ALL))
             delay_settings.append((delay_after, delay_time))
-
         change_interval = input(Fore.CYAN + "⏳ Ganti interval setelah delay tertentu? (y/n): " + Style.RESET_ALL).strip().lower()
         interval_changes = {}
-
         if change_interval == "y":
             num_changes = int(input(Fore.CYAN + "🔄 Berapa kali ganti interval? " + Style.RESET_ALL))
             for _ in range(num_changes):
@@ -424,86 +387,61 @@ def main():
                 new_min_interval = int(input(Fore.CYAN + "🕒 Masukkan min interval baru (detik): " + Style.RESET_ALL))
                 new_max_interval = int(input(Fore.CYAN + "🕒 Masukkan max interval baru (detik): " + Style.RESET_ALL))
                 interval_changes[after_delay] = (new_min_interval, new_max_interval)
-
-        # Create dictionaries for mapping bot IDs to tokens and names
         tokens_dict = dict(zip(bot_ids, [token for _, token, _, _ in tokens]))
         names_dict = dict(zip(bot_ids, [name for name, _, _, _ in tokens]))
-
-        # Initialize last_processed_id
         last_processed_id = get_latest_message_id(channel_id, tokens[0][1])
         if last_processed_id is None:
             return
-
-        # Initialize processed messages set and reply indices
         processed_messages = set()
-        reply_indices = {}  # Dictionary to track the next reply index per keyword
-
-        # Asumsi token pertama adalah milik Anda
-        user_id = bot_ids[0]  # Mengambil user_id dari token pertama sebagai ID Anda
-
-        # Start polling thread
+        reply_indices = {}
+        user_id = bot_ids[0]  # Asumsi token pertama adalah milik Anda
         polling_thread = threading.Thread(
             target=poll_messages,
             args=(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, processed_messages, reply_indices, user_id)
         )
         polling_thread.daemon = True
         polling_thread.start()
-
         if start_time_minutes > 0:
             countdown(start_time_minutes)
-
         log_message("info", "🤖 Memulai percakapan otomatis...")
-
         last_message_per_sender = {}
         message_count = 0
         delay_count = 0
-
         for index, dialog in enumerate(dialog_list):
             try:
                 text = dialog["text"]
                 sender_index = dialog["sender"]
                 reply_to = dialog.get("reply_to", None)
-
                 if sender_index >= len(tokens):
                     log_message("error", f"⚠️ Indeks pengirim {sender_index} di luar batas.")
                     return
-
                 token_name, token, min_interval, max_interval = tokens[sender_index]
                 message_reference = last_message_per_sender.get(reply_to) if reply_to is not None else None
-
                 message_id = send_message(channel_id, token_name, token, text, message_reference)
                 if message_id:
                     last_message_per_sender[sender_index] = message_id
-
                 custom_delay = dialog.get("delay", None)
                 if custom_delay:
                     log_message("info", f"⏳ Delay kustom dari JSON terdeteksi: {custom_delay} detik")
                     time.sleep(custom_delay)
                     log_message("info", "⏳ Melanjutkan setelah delay kustom...")
                     continue
-
                 wait_time = random.uniform(min_interval, max_interval)
                 log_message("info", f"⏳ Menunggu {wait_time:.2f} detik sebelum pesan berikutnya...")
                 time.sleep(wait_time)
-
                 message_count += 1
-
                 if delay_count < max_delays and delay_count < len(delay_settings) and message_count >= delay_settings[delay_count][0]:
                     log_message("info", f"⏸️ Berhenti selama {delay_settings[delay_count][1]} detik... ({delay_count + 1}/{max_delays})")
                     time.sleep(delay_settings[delay_count][1])
                     delay_count += 1
-
                 if delay_count in interval_changes:
                     new_min_interval, new_max_interval = interval_changes[delay_count]
                     tokens[sender_index] = (token_name, token, new_min_interval, new_max_interval)
                     log_message("info", f"⏳ Interval diubah menjadi {new_min_interval}-{new_max_interval} detik setelah delay {delay_count}/{max_delays}")
-
             except Exception as e:
                 log_message("error", f"❗ Terjadi kesalahan: {e}")
                 return
-
         log_message("info", "🎉 Percakapan selesai.")
-
     except (FileNotFoundError, ValueError, json.JSONDecodeError) as e:
         log_message("error", f"❗ Error: {e}")
         return
