@@ -8,7 +8,6 @@ A simple Discord bot script to automate conversations based on predefined dialog
   ```bash '''cmd
   pip install -r requirements.txt
   
-
 **Setup Files**
 
 1. token.txt  
