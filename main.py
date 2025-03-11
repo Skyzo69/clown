@@ -218,50 +218,63 @@ def main():
     delay_count = 0
 
     for index, dialog in enumerate(dialog_list):
-        try:
-            text = dialog["text"]
-            sender_index = dialog["sender"]
-            reply_to = dialog.get("reply_to", None)
+    try:
+        text = dialog["text"]
+        sender_index = dialog["sender"]
+        reply_to = dialog.get("reply_to", None)
 
-            if sender_index >= len(tokens):
-                log_message("error", f"⚠️ Sender index {sender_index} is out of bounds.")
-                return
-
-            token_name, token, min_interval, max_interval = tokens[sender_index]
-            message_reference = last_message_per_sender.get(reply_to) if reply_to is not None else None
-
-            message_id = send_message(channel_id, token_name, token, text, message_reference)
-            if message_id:
-                last_message_per_sender[sender_index] = message_id
-
-                   # Cek apakah ada delay khusus di JSON
-           custom_delay = dialog.get("delay", None)
-           if custom_delay:
-               log_message("info", f"⏳ Custom delay json detected: {custom_delay} seconds")
-               time.sleep(custom_delay)
-               log_message("info", "⏳ Resuming after custom delay...")
-           else:
-               time.sleep(wait_time)  # Delay reguler
-
-            wait_time = random.uniform(min_interval, max_interval)
-            log_message("info", f"⏳ Waiting {wait_time:.2f} seconds before the next message...")
-            time.sleep(wait_time)
-
-            message_count += 1
-
-            if delay_count < max_delays and delay_count < len(delay_settings) and message_count >= delay_settings[delay_count][0]:
-                log_message("info", f"⏸️ Pausing for {delay_settings[delay_count][1]} seconds... ({delay_count + 1}/{max_delays})")
-                time.sleep(delay_settings[delay_count][1])
-                
-                delay_count += 1
-    
-            if delay_count in interval_changes:
-                new_min_interval, new_max_interval = interval_changes[delay_count]
-                tokens[sender_index] = (token_name, token, new_min_interval, new_max_interval)  # Simpan perubahan
-                log_message("info", f"⏳ Interval changed to {new_min_interval}-{new_max_interval} seconds after delay {delay_count}/{max_delays}")
-        except Exception as e:
-            log_message("error", f"❗ An error occurred: {e}")
+        if sender_index >= len(tokens):
+            log_message("error", f"⚠️ Sender index {sender_index} is out of bounds.")
             return
+
+        token_name, token, min_interval, max_interval = tokens[sender_index]
+        message_reference = last_message_per_sender.get(reply_to) if reply_to is not None else None
+
+        # Simulasi waktu mengetik sebelum pesan dikirim
+        word_count = len(text.split())
+        if word_count <= 3:
+            typing_time = random.uniform(2, 4)
+        elif word_count <= 10:
+            typing_time = random.uniform(4, 9)
+        else:
+            typing_time = random.uniform(10, 20)
+
+        log_message("info", f"⌨️ Typing for {typing_time:.2f} seconds...")
+        time.sleep(typing_time)
+
+        # Kirim pesan setelah mengetik
+        message_id = send_message(channel_id, token_name, token, text, message_reference)
+        if message_id:
+            last_message_per_sender[sender_index] = message_id
+
+        # Cek apakah ada delay khusus di JSON
+        custom_delay = dialog.get("delay", None)
+        if custom_delay:
+            log_message("info", f"⏳ Custom delay json detected: {custom_delay} seconds")
+            time.sleep(custom_delay)
+            log_message("info", "⏳ Resuming after custom delay...")
+
+        # Waktu tunggu normal jika tidak ada custom delay
+        wait_time = random.uniform(min_interval, max_interval)
+        log_message("info", f"⏳ Waiting {wait_time:.2f} seconds before the next message...")
+        time.sleep(wait_time)
+
+        message_count += 1
+
+        if delay_count < max_delays and delay_count < len(delay_settings) and message_count >= delay_settings[delay_count][0]:
+            log_message("info", f"⏸️ Pausing for {delay_settings[delay_count][1]} seconds... ({delay_count + 1}/{max_delays})")
+            time.sleep(delay_settings[delay_count][1])
+            
+            delay_count += 1
+
+        if delay_count in interval_changes:
+            new_min_interval, new_max_interval = interval_changes[delay_count]
+            tokens[sender_index] = (token_name, token, new_min_interval, new_max_interval)
+            log_message("info", f"⏳ Interval changed to {new_min_interval}-{new_max_interval} seconds after delay {delay_count}/{max_delays}")
+
+    except Exception as e:
+        log_message("error", f"❗ An error occurred: {e}")
+        return
 
     log_message("info", "🎉 Conversation completed.")
 
