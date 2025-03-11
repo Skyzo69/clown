@@ -104,9 +104,6 @@ def validate_token(token_name, token):
         log_message("error", f"⚠️ Error validating token {token_name}: {e}")
         return False
 
-def log_message(level, message):
-    print(f"[{level.upper()}] {message}")  # Dummy logger bg
-
 def typing_indicator(channel_id, token, typing_time):
     headers = {'Authorization': token}
     start_time = time.time()
