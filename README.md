@@ -15,8 +15,8 @@
    📏 Format: token_name:token:min_interval:max_interval (one per line)
     📝 Example:
    
-           Token1:your_discord_token1:5:10
-           Token2:your_discord_token2:5:10
+     Token1:your_discord_token1:5:10
+     Token2:your_discord_token2:5:10
    
    ℹ️ Notes:
    ✅ Minimum 2 tokens required
