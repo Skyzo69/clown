@@ -26,6 +26,8 @@ Setup Files
 
 ## 2. template.txt
 
+- Using AI prompts for better results
+
 - Format: [keyword1|keyword2] followed by response lines.
 
 - Example:
@@ -37,6 +39,8 @@ Setup Files
 
 
 ## 3. dialog.txt
+
+- Using AI prompts for better results
 
 - Format: JSON array of dialog objects.
 
