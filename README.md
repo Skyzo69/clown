@@ -23,7 +23,7 @@ Example:
     Token1:your_discord_token1:5:10
     Token2:your_discord_token2:5:10
 
-•Notes: 
+- Notes: 
 
    min_interval and max_interval are in seconds (e.g., 5-10 seconds).
 
