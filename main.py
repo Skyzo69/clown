@@ -2,6 +2,7 @@ import time
 import logging
 import requests
 import json
+import sys
 import random
 from datetime import datetime, timedelta
 from colorama import Fore, Style, init
@@ -238,9 +239,8 @@ def main():
                 typing_time = random.uniform(4, 9)
             else:
                 typing_time = random.uniform(10, 16)
-
                 log_message("info", f"⌨️ Typing for {typing_time:.2f} seconds...")
-                time.sleep(typing_time)
+                sys.stdout.flush()
 
                 # Kirim pesan setelah mengetik
             message_id = send_message(channel_id, token_name, token, text, message_reference)
