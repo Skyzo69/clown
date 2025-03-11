@@ -218,10 +218,10 @@ def main():
     delay_count = 0
 
     for index, dialog in enumerate(dialog_list):
-    try:
-        text = dialog["text"]
-        sender_index = dialog["sender"]
-        reply_to = dialog.get("reply_to", None)
+       try:
+           text = dialog["text"]
+           sender_index = dialog["sender"]
+           reply_to = dialog.get("reply_to", None)
 
         if sender_index >= len(tokens):
             log_message("error", f"⚠️ Sender index {sender_index} is out of bounds.")
