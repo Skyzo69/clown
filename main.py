@@ -183,17 +183,14 @@ def main():
         if start_time_minutes < 0:
             raise ValueError("⚠️ Start time cannot be negative.")
 
-        # 1️⃣ Input jumlah delay yang diinginkan
         max_delays = int(input(Fore.CYAN + "🔁 Enter how many times to delay: " + Style.RESET_ALL))
         delay_settings = []
 
-        # 2️⃣ Input jumlah pesan sebelum delay & durasi delay per tahap
         for i in range(max_delays):
             delay_after = int(input(Fore.CYAN + f"🔄 Enter how many messages before delay {i+1}: " + Style.RESET_ALL))
             delay_time = int(input(Fore.CYAN + f"⏳ Enter delay {i+1} time in seconds: " + Style.RESET_ALL))
             delay_settings.append((delay_after, delay_time))
 
-        # 3️⃣ Input apakah interval berubah setelah delay
         change_interval = input(Fore.CYAN + "⏳ Change interval after certain delays? (y/n): " + Style.RESET_ALL).strip().lower()
         interval_changes = {}
 
@@ -231,7 +228,6 @@ def main():
             token_name, token, min_interval, max_interval = tokens[sender_index]
             message_reference = last_message_per_sender.get(reply_to) if reply_to is not None else None
 
-              # Simulasi waktu mengetik sebelum pesan dikirim
             word_count = len(text.split())
             if word_count <= 3:
                 typing_time = random.uniform(1, 4)
@@ -242,7 +238,6 @@ def main():
                 log_message("info", f"⌨️ Typing for {typing_time:.2f} seconds...")
                 sys.stdout.flush()
 
-                # Kirim pesan setelah mengetik
             message_id = send_message(channel_id, token_name, token, text, message_reference)
             if message_id:
                 last_message_per_sender[sender_index] = message_id
