@@ -105,6 +105,20 @@ def validate_token(token_name, token):
         log_message("error", f"⚠️ Error validating token {token_name}: {e}")
         return False
 
+def get_user_id_from_token(token):
+    """Gets the user ID from the token"""
+    headers = {"Authorization": token}
+    try:
+        response = requests.get("https://discord.com/api/v9/users/@me", headers=headers)
+        if response.status_code == 200:
+            return response.json().get("id")
+        else:
+            log_message("error", f"❌ Failed to get user ID for token: {response.status_code}")
+            return None
+    except requests.exceptions.RequestException as e:
+        log_message("error", f"⚠️ Error getting user ID: {e}")
+        return None
+
 def typing_indicator(channel_id, token, typing_time):
     headers = {'Authorization': token}
     start_time = time.time()
@@ -200,28 +214,36 @@ def get_reply(message, reply_templates):
             return random.choice(responses)
     return None
 
-def handle_message(data, bot_id, channel_id, token, token_name, reply_templates):
+def handle_message(data, bot_ids, channel_id, token, token_name, reply_templates):
     content = data.get("content", "")
+    author_id = data.get("author", {}).get("id")
     mentions = data.get("mentions", [])
     message_id = data.get("id")
+    referenced_message = data.get("referenced_message", {})
 
-    is_mentioned = any(user["id"] == bot_id for user in mentions)
-    is_reply = "referenced_message" in data
+    # Cek apakah pengirim adalah bot yang ada di token.txt
+    if author_id in bot_ids:
+        log_message("info", f"🤖 Pesan dari bot sendiri ({author_id}), diabaikan.")
+        return
 
-    if is_mentioned or is_reply:
-        log_message("info", f"🔔 Mention/Reply detected! Processing...")
+    # Cek apakah bot di-mention atau pesan adalah reply ke pesan bot
+    is_mentioned = any(user["id"] in bot_ids for user in mentions)
+    is_reply_to_bot = referenced_message.get("author", {}).get("id") in bot_ids if referenced_message else False
+
+    if is_mentioned or is_reply_to_bot:
+        log_message("info", f"🔔 Mention/Reply dari pengguna lain terdeteksi! Memproses...")
 
         # Ambil balasan dari template
         reply_text = get_reply(content, reply_templates)
 
         if reply_text:
             reply_delay = random.uniform(15, 60)
-            log_message("info", f"⏳ Waiting {reply_delay:.2f} seconds before replying...")
+            log_message("info", f"⏳ Menunggu {reply_delay:.2f} detik sebelum membalas...")
             time.sleep(reply_delay)
 
             send_message(channel_id, token_name, token, reply_text, message_reference=message_id)
         else:
-            log_message("warning", "❌ No matching template found. Ignoring.")
+            log_message("warning", "❌ Tidak ada template yang cocok. Diabaikan.")
 
 def main():
     display_banner()
@@ -234,6 +256,7 @@ def main():
 
         with open("token.txt", "r") as f:
             tokens = []
+            bot_ids = []
             for line in f.readlines():
                 parts = line.strip().split(":")
                 if len(parts) != 4:
@@ -245,6 +268,10 @@ def main():
                 except ValueError:
                     raise ValueError(f"⚠️ min_interval dan max_interval harus berupa angka di token.txt. Nilai tidak valid: {min_interval}, {max_interval}")
                 tokens.append((token_name, token, min_interval, max_interval))
+                # Dapatkan ID pengguna dari token
+                user_id = get_user_id_from_token(token)
+                if user_id:
+                    bot_ids.append(user_id)
 
         if len(tokens) < 2:
             raise ValueError("⚠️ File token harus berisi minimal 2 akun.")
