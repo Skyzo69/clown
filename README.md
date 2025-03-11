@@ -10,7 +10,7 @@ A simple Discord bot script to automate conversations based on predefined dialog
   
 ## **Setup Files**
 
-## 1. token.txt  
+### 1. token.txt  
 
    - Format: token_name:token:min_interval:max_interval (one per line).
 
@@ -41,7 +41,7 @@ A simple Discord bot script to automate conversations based on predefined dialog
          Kabar baik, kamu gimana?
 
 
-## 3. dialog.txt  
+### 3. dialog.txt  
 
 - Format: JSON array of dialog objects.
 
