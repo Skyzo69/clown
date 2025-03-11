@@ -74,7 +74,41 @@ A simple Discord bot script to automate conversations based on predefined dialog
     ]
 
 
+## Step-by-Step Usage
 
+1. **Prepare Files**  
+   - Create `token.txt`, `dialog.txt`, and `template.txt` as described above.
+
+2. **Run the Script**  
+   - Execute:
+     ```bash
+     python script.py
+     ```
+
+3. **Follow Prompts**  
+   - Enter the channel ID (e.g., `123456789`).  
+   - Set the start time in minutes (e.g., `0` for immediate start).  
+   - Specify the number of delays (e.g., `1`).  
+   - Input delay details (e.g., `2` messages, `30` seconds).  
+   - Choose whether to change intervals after delays (e.g., `n`).
+
+4. **Monitor Terminal**  
+   - The script runs automated dialogs from `dialog.txt`.  
+   - It polls messages and responds based on `template.txt`.  
+   - Manual messages cancel pending auto-replies instantly.
+
+## Features
+
+- Automated dialogs with delays and replies.  
+- Dynamic responses to mentions/replies using templates.  
+- Manual messages stop auto-replies without delay.  
+- Logging to `activity.log`.
+
+## Notes
+
+- Ensure tokens are valid Discord bot/user tokens.  
+- Manual messages must be sent outside `dialog.txt` to cancel auto-replies.  
+- Replies to others follow template rules and don’t cancel subsequent auto-messages.
 
 
 
