@@ -247,14 +247,13 @@ def main():
             if message_id:
                 last_message_per_sender[sender_index] = message_id
 
-                # Cek apakah ada delay khusus di JSON
             custom_delay = dialog.get("delay", None)
             if custom_delay:
                 log_message("info", f"⏳ Custom delay json detected: {custom_delay} seconds")
                 time.sleep(custom_delay)
                 log_message("info", "⏳ Resuming after custom delay...")
-
-                # Waktu tunggu normal jika tidak ada custom delay
+                continue  
+                
             wait_time = random.uniform(min_interval, max_interval)
             log_message("info", f"⏳ Waiting {wait_time:.2f} seconds before the next message...")
             time.sleep(wait_time)
