@@ -6,7 +6,6 @@ A simple Discord bot script to automate conversations based on predefined dialog
 - **Python 3.8+**
 - Install dependencies:
   ```bash '''cmd
-  pip install requests colorama tabulate pyfiglet
   pip install -r requirements.txt
 
 Setup Files
@@ -26,6 +25,9 @@ Requirements: At least 2 tokens.
 
 
 Example:
+
+    Token1:your_discord_token1:5:10
+    Token2:your_discord_token2:5:10
 
 
 
