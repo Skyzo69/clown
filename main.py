@@ -197,12 +197,11 @@ def main():
     if len(tokens) < 2:
         raise ValueError("⚠️ Token file must contain at least 2 accounts.")
 
-    # Ini harus tetap dieksekusi meskipun token cukup
-    reply_templates = load_templates()
+    reply_templates = load_templates()  # Ini juga harus sejajar dengan blok try
 
-    except (FileNotFoundError, ValueError, json.JSONDecodeError) as e:
-         log_message("error", f"❗ Error: {e}")
-         return
+except (FileNotFoundError, ValueError, json.JSONDecodeError) as e:
+    log_message("error", f"❗ Error: {e}")
+    return
 
          # **Baca template dari file**
         def load_templates(file_path="template.txt"):
