@@ -31,26 +31,42 @@
     Halo bro, kabarku baik!
     [apa kabar]
     Kabar baik, kamu gimana?
-5. 💬 dialog.txt
-📏 Format: JSON array of dialog objects
-📋 Fields:
-✍️ text: Message content
-👤 sender: Index of token (0-based)
-↩️ reply_to (optional): Index of previous sender to reply to
-⏳ delay (optional): Custom delay in seconds
-📝 Example:
-json
-[
-  {"text": "Halo semua!", "sender": 0},
-  {"text": "Apa kabar?", "sender": 1, "reply_to": 0, "delay": 10}
-]
-🚀 Step-by-Step Usage
-📑 Prepare Files
-📝 Create token.txt, dialog.txt, and template.txt as described above
-▶️ Run the Script
-💻 Execute the following command:
-bash
+    
+### 5. 💬 dialog.txt
+
+   📏 Format: JSON array of dialog objects
+   
+   📋 Fields:
+   
+   ✍️ text: Message content
+   
+   👤 sender: Index of token (0-based)
+   
+   ↩️ reply_to (optional): Index of previous sender to reply to
+   
+   ⏳ delay (optional): Custom delay in seconds
+   
+   📝 Example:
+      _json_
+      
+    [
+        {"text": "Halo semua!", "sender": 0},
+        {"text": "Apa kabar?", "sender": 1, "reply_to": 0, "delay": 10}
+    ]
+## 🚀 Step-by-Step Usage
+
+  📑 Prepare Files
+  
+  📝 Create token.txt, dialog.txt, and template.txt as described above
+  
+  ▶️ Run the Script
+  
+  💻 Execute the following command:
+  
+```bash
 python main.py
+
+
 ❓ Follow Prompts
 📡 Enter the channel ID (e.g., 123456789)
 ⏰ Set the start time in minutes (e.g., 0 for immediate start)
