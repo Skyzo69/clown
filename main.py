@@ -232,10 +232,12 @@ def get_reply(message, reply_templates, reply_indices, used_keywords):
 
     return reply, selected_key
 
-def get_manual_reply(message_id, user_id, token, channel_id):
-    """Mendapatkan balasan manual dari pengguna"""
+def get_manual_reply_after_last_bot_message(last_bot_message_id, user_id, token, channel_id):
+    """Mendapatkan pesan terbaru dari pengguna setelah pesan terakhir bot"""
     headers = {"Authorization": token}
     params = {"limit": 100}
+    if last_bot_message_id:
+        params["after"] = last_bot_message_id  # Ambil pesan setelah pesan terakhir bot
     response = requests.get(
         f"https://discord.com/api/v9/channels/{channel_id}/messages",
         headers=headers,
@@ -244,11 +246,11 @@ def get_manual_reply(message_id, user_id, token, channel_id):
     if response.status_code == 200:
         messages = response.json()
         for msg in messages:
-            if msg.get("referenced_message", {}).get("id") == message_id and msg["author"]["id"] == user_id:
-                return msg["content"]
+            if msg["author"]["id"] == user_id:
+                return msg["content"]  # Kembalikan konten pesan jika ditemukan
     return None
 
-def should_respond(data, bot_ids, processed_messages, user_id, token, channel_id):
+def should_respond(data, bot_ids, processed_messages, user_id, token, channel_id, last_bot_message_id):
     """Determines which bots should respond (returns a list of bot_ids)"""
     message_id = data.get("id")
     if message_id in processed_messages:
@@ -277,12 +279,12 @@ def should_respond(data, bot_ids, processed_messages, user_id, token, channel_id
         if user["id"] in bot_ids and user["id"] not in responding_bots:
             responding_bots.append(user["id"])
 
-    # Periksa apakah Anda sudah membalas secara manual
-    if referenced_message:
-        manual_reply = get_manual_reply(referenced_message["id"], user_id, token, channel_id)
+    # Periksa apakah pengguna sudah mengirim pesan setelah pesan terakhir bot
+    if last_bot_message_id:
+        manual_reply = get_manual_reply_after_last_bot_message(last_bot_message_id, user_id, token, channel_id)
         if manual_reply:
-            log_message("info", f"🛑 Balasan manual terdeteksi: '{manual_reply}'. Membatalkan balasan otomatis.")
-            return []  # Batalkan balasan otomatis jika ada balasan manual
+            log_message("info", f"🛑 Pengguna telah mengirim pesan setelah bot: '{manual_reply}'. Membatalkan balasan otomatis.")
+            return []  # Batalkan balasan otomatis jika pengguna sudah mengirim pesan
 
     return responding_bots
 
@@ -291,11 +293,14 @@ def respond_to_message(channel_id, token_name, token, message_content, reply_tex
     reply_delay = random.uniform(15, 60)
     log_message("info", f"⏳ [{token_name}] Menunggu {reply_delay:.2f} detik sebelum membalas...")
     time.sleep(reply_delay)
-    send_message(channel_id, token_name, token, reply_text, message_reference)
+    message_id = send_message(channel_id, token_name, token, reply_text, message_reference)
+    return message_id
 
 def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, processed_messages, reply_indices, user_id):
     """Polls new messages and processes replies/mentions for multiple bots"""
     global last_processed_id
+    last_bot_message_id = None  # Track ID pesan terakhir dari bot
+
     while True:
         try:
             params = {"limit": 100}
@@ -310,7 +315,7 @@ def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates,
                 messages = response.json()
                 if messages:
                     for message in messages:
-                        bot_ids_to_respond = should_respond(message, bot_ids, processed_messages, user_id, tokens_dict[bot_ids[0]], channel_id)
+                        bot_ids_to_respond = should_respond(message, bot_ids, processed_messages, user_id, tokens_dict[bot_ids[0]], channel_id, last_bot_message_id)
                         if bot_ids_to_respond:
                             # Tampilkan pesan yang di-reply/mention di terminal
                             author = message["author"]["username"]
@@ -325,10 +330,9 @@ def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates,
                                 reply_text, selected_key = get_reply(message["content"], reply_templates, reply_indices, used_keywords)
                                 if reply_text and selected_key:
                                     used_keywords.add(selected_key)  # Mark this keyword as used
-                                    # Jalankan respons di thread terpisah
+                                    # Jalankan respons di thread terpisah dan simpan ID pesan terakhir bot
                                     thread = threading.Thread(
-                                        target=respond_to_message,
-                                        args=(channel_id, token_name, token, message["content"], reply_text, message["id"])
+                                        target=lambda: globals().__setitem__('last_bot_message_id', respond_to_message(channel_id, token_name, token, message["content"], reply_text, message["id"]))
                                     )
                                     thread.start()
                                 else:
