@@ -95,7 +95,6 @@
 - Typing duration: 0.4–0.7 seconds per word.
 - Manual messages stop auto-replies if there's a keyword response.
 - Supports multiple accounts (3 or more).
-- More natural and accurate, without using tokens from an AI API
 - Logging to `activity.log`.
 
 ## Notes
