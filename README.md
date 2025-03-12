@@ -1,6 +1,6 @@
 # DISCORD CLOWN BOT 🤡
 
-**_A clown Discord bot to automate conversations with costume dialogs, dynamic and costume replies, a featuring human-like randomized timing patterns, support multi account. If you're too lazy to be a clown on Discord, you can use this script_**
+**_A clown Discord bot to automate conversations with costume dialogs, dynamic and costume replies, a featuring human-like randomized timing patterns, support multi account, More natural and accurate, without using tokens from an AI API. If you're too lazy to be a clown on Discord, you can use this script._**
 
 ---
 
@@ -95,6 +95,7 @@
 - Typing duration: 0.4–0.7 seconds per word.
 - Manual messages stop auto-replies if there's a keyword response.
 - Supports multiple accounts (3 or more).
+- More natural and accurate, without using tokens from an AI API."
 - Logging to `activity.log`.
 
 ## Notes
