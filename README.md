@@ -21,7 +21,7 @@ _A clown Discord bot to automate conversations with costume dialogs, dynamic and
       Token1:your_discord_token1:5:10
       Token2:your_discord_token2:5:10
 
-- Notes: Minimum 2 tokens required. Intervals in seconds.
+ - Notes: Minimum 2 tokens required. Intervals in seconds.
 
 
 ### 2. template.txt
