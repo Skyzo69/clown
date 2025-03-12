@@ -1,6 +1,6 @@
-# BOT DIALOG
+# DISCORD CLOWN BOT 🤡
 
-_A stupid Discord bot to automate conversations with predefined dialogs, dynamic replies, and manual message cancellation support, featuring human-like randomized timing patterns._
+_A stupid Discord bot to automate conversations with costume dialogs, dynamic and costume replies, a featuring human-like randomized timing patterns, support multi account. if you lazy for clown in discord you can using this script._
 
 ---
 
