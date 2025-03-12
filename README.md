@@ -73,7 +73,7 @@ _A stupid Discord bot to automate conversations with predefined dialogs, dynamic
 2. **Run the Script**  
    - Execute:
      ```bash
-     python script.py
+     python main.py
      ```
 
 3. **Follow Prompts**  
