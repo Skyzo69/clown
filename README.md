@@ -26,7 +26,7 @@
 
 ### 2. template.txt
 
-- Using AI prompts for better results
+- Use quality AI prompts for better results.
 
 - Format: [keyword1|keyword2] followed by response lines.
 
@@ -39,7 +39,7 @@
 
 ### 3. dialog.txt
 
-- Using AI prompts for better results
+- Use quality AI prompts for better results.
 
 - Format: JSON array of dialog objects.
 
