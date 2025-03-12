@@ -32,11 +32,10 @@ _A stupid Discord bot to automate conversations with predefined dialogs, dynamic
 
 - Example:
 
-      [halo|hi]
-      Halo bro, kabarku baik!
-      [apa kabar]
-      Kabar baik, kamu gimana?
-
+      [thanks|thx]  
+      Np bro  
+      All good  
+        
 
 ### 3. dialog.txt
 
@@ -61,8 +60,9 @@ _A stupid Discord bot to automate conversations with predefined dialogs, dynamic
     _json_
 
       [
-         {"text": "Halo semua!", "sender": 0},
-         {"text": "Apa kabar?", "sender": 1, "reply_to": 0, "delay": 10}
+        {"text": "Yo, wassup?", "sender": 0, "delay": 5},
+        {"text": "All good friends, You?", "sender": 1, "reply_to": 0, "delay": 7},
+        {"text": "Same, just finished a book", "sender": 0, "reply_to": 1, "delay": 10},
       ]
 
 ## Step-by-Step Usage
