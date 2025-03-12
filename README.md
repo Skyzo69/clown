@@ -1,4 +1,4 @@
-# DISCORD CLOWN BOT 🤡
+# DISCORD CLOWN BOT
 
 **_A clown Discord bot to automate conversations with costume dialogs, dynamic and costume replies, a featuring human-like randomized timing patterns, More natural and accurate, without using tokens from an AI API. If you're too lazy to be a clown on Discord, you can use this script._**
 
