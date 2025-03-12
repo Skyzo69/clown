@@ -247,7 +247,7 @@ def should_respond(data, bot_ids, processed_messages, manual_messages, auto_mess
         referenced_author_id = referenced_message.get("author", {}).get("id")
         if referenced_author_id in bot_ids:
             if referenced_author_id in manual_messages and manual_messages[referenced_author_id] > message_id and manual_messages[referenced_author_id] not in auto_message_ids:
-                log_message("info", f"🚫 Bot {referenced_author_id} tidak merespons karena ada pesan manual terbaru.")
+                log_message("info", f"🚫 Bot {referenced_author_id} will not respond due to a more recent manual message.")
             else:
                 responding_bots.append(referenced_author_id)
 
@@ -255,7 +255,7 @@ def should_respond(data, bot_ids, processed_messages, manual_messages, auto_mess
     for user in mentions:
         if user["id"] in bot_ids and user["id"] not in responding_bots:
             if user["id"] in manual_messages and manual_messages[user["id"]] > message_id and manual_messages[user["id"]] not in auto_message_ids:
-                log_message("info", f"🚫 Bot {user['id']} tidak merespons karena ada pesan manual terbaru.")
+                log_message("info", f"🚫 Bot {user['id']} will not respond due to a more recent manual message.")
             else:
                 responding_bots.append(user["id"])
 
@@ -264,18 +264,18 @@ def should_respond(data, bot_ids, processed_messages, manual_messages, auto_mess
 def respond_to_message(channel_id, token_name, token, message_content, reply_text, message_reference, bot_id, manual_messages, auto_message_ids):
     """Function to send a response in a separate thread with manual message check"""
     reply_delay = random.uniform(15, 60)
-    log_message("info", f"⏳ [{token_name}] Menunggu {reply_delay:.2f} detik sebelum membalas...")
+    log_message("info", f"⏳ [{token_name}] Waiting {reply_delay:.2f} seconds before replying...")
 
-    # Cek pesan manual sebelum delay untuk pembatalan cepat
+    # Check for manual messages before delay for quick cancellation
     if bot_id in manual_messages and manual_messages[bot_id] > message_reference and manual_messages[bot_id] not in auto_message_ids:
-        log_message("info", f"🚫 [{token_name}] Pesan otomatis dibatalkan karena ada pesan manual terbaru.")
+        log_message("info", f"🚫 [{token_name}] Automatic message canceled due to a more recent manual message.")
         return
 
     time.sleep(reply_delay)
     
-    # Cek lagi setelah delay untuk memastikan tidak ada pesan manual baru selama delay
+    # Check again after delay to ensure no new manual messages during delay
     if bot_id in manual_messages and manual_messages[bot_id] > message_reference and manual_messages[bot_id] not in auto_message_ids:
-        log_message("info", f"🚫 [{token_name}] Pesan otomatis dibatalkan karena ada pesan manual terbaru.")
+        log_message("info", f"🚫 [{token_name}] Automatic message canceled due to a more recent manual message.")
         return
 
     message_id = send_message(channel_id, token_name, token, reply_text, message_reference)
@@ -302,17 +302,17 @@ def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates,
                         message_id = message["id"]
                         author_id = message["author"]["id"]
 
-                        # Deteksi pesan manual dan tandai sebagai diproses
+                        # Detect manual messages and mark as processed
                         if author_id in bot_ids and message_id not in auto_message_ids:
                             manual_messages[author_id] = message_id
-                            log_message("info", f"📝 Pesan manual terdeteksi dari bot {author_id}: '{message['content']}' (Message ID: {message_id})")
-                            processed_messages.add(message_id)  # Tambahkan ke processed_messages untuk mencegah duplikasi
+                            log_message("info", f"📝 Manual message detected from bot {author_id}: '{message['content']}' (Message ID: {message_id})")
+                            processed_messages.add(message_id)  # Add to processed_messages to prevent duplication
 
                         bot_ids_to_respond = should_respond(message, bot_ids, processed_messages, manual_messages, auto_message_ids)
                         if bot_ids_to_respond:
                             author = message["author"]["username"]
                             content = message["content"]
-                            log_message("info", f"🔔 Pesan dari {author}: '{content}'")
+                            log_message("info", f"🔔 Message from {author}: '{content}'")
 
                             used_keywords = set()
                             for bot_id in bot_ids_to_respond:
@@ -327,12 +327,12 @@ def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates,
                                     )
                                     thread.start()
                                 else:
-                                    log_message("warning", f"❌ [{token_name}] Tidak ada template yang cocok atau keyword sudah digunakan.")
+                                    log_message("warning", f"❌ [{token_name}] No matching template or keyword already used.")
                         last_processed_id = message["id"]
             else:
-                log_message("warning", f"⚠️ Gagal mengambil pesan: {response.status_code}")
+                log_message("warning", f"⚠️ Failed to fetch messages: {response.status_code}")
         except Exception as e:
-            log_message("error", f"❗ Error dalam polling: {e}")
+            log_message("error", f"❗ Error in polling: {e}")
         time.sleep(5)
 
 def get_latest_message_id(channel_id, token):
@@ -345,7 +345,7 @@ def get_latest_message_id(channel_id, token):
     if response.status_code == 200 and response.json():
         return response.json()[0]["id"]
     else:
-        log_message("error", "❗ Gagal mendapatkan ID pesan terakhir.")
+        log_message("error", "❗ Failed to get the latest message ID.")
         return None
 
 def main():
@@ -370,14 +370,14 @@ def main():
                     min_interval = int(min_interval)
                     max_interval = int(max_interval)
                 except ValueError:
-                    raise ValueError(f"⚠️ min_interval dan max_interval harus berupa angka di token.txt. Nilai tidak valid: {min_interval}, {max_interval}")
+                    raise ValueError(f"⚠️ min_interval and max_interval must be numbers in token.txt. Invalid values: {min_interval}, {max_interval}")
                 tokens.append((token_name, token, min_interval, max_interval))
                 user_id = get_user_id_from_token(token)
                 if user_id:
                     bot_ids.append(user_id)
 
         if len(tokens) < 2:
-            raise ValueError("⚠️ File token harus berisi minimal 2 akun.")
+            raise ValueError("⚠️ Token file must contain at least 2 accounts.")
 
         reply_templates = load_templates()
         for token_name, token, _, _ in tokens:
@@ -386,29 +386,29 @@ def main():
 
         display_token_list(tokens)
 
-        channel_id = input(Fore.CYAN + "🔢 Masukkan ID channel: " + Style.RESET_ALL).strip()
+        channel_id = input(Fore.CYAN + "🔢 Enter channel ID: " + Style.RESET_ALL).strip()
         if not channel_id.isdigit():
-            raise ValueError("⚠️ ID channel harus berupa angka.")
+            raise ValueError("⚠️ Channel ID must be a number.")
 
-        start_time_minutes = int(input(Fore.CYAN + "⏳ Masukkan waktu mulai dalam menit (0 untuk mulai langsung): " + Style.RESET_ALL))
+        start_time_minutes = int(input(Fore.CYAN + "⏳ Enter start time in minutes (0 to start immediately): " + Style.RESET_ALL))
         if start_time_minutes < 0:
-            raise ValueError("⚠️ Waktu mulai tidak boleh neg Houratif.")
+            raise ValueError("⚠️ Start time cannot be negative.")
 
-        max_delays = int(input(Fore.CYAN + "🔁 Masukkan berapa kali delay: " + Style.RESET_ALL))
+        max_delays = int(input(Fore.CYAN + "🔁 Enter number of delays: " + Style.RESET_ALL))
         delay_settings = []
         for i in range(max_delays):
-            delay_after = int(input(Fore.CYAN + f"🔄 Masukkan jumlah pesan sebelum delay {i+1}: " + Style.RESET_ALL))
-            delay_time = int(input(Fore.CYAN + f"⏳ Masukkan waktu delay {i+1} dalam detik: " + Style.RESET_ALL))
+            delay_after = int(input(Fore.CYAN + f"🔄 Enter number of messages before delay {i+1}: " + Style.RESET_ALL))
+            delay_time = int(input(Fore.CYAN + f"⏳ Enter delay {i+1} time in seconds: " + Style.RESET_ALL))
             delay_settings.append((delay_after, delay_time))
 
-        change_interval = input(Fore.CYAN + "⏳ Ganti interval setelah delay tertentu? (y/n): " + Style.RESET_ALL).strip().lower()
+        change_interval = input(Fore.CYAN + "⏳ Change interval after a specific delay? (y/n): " + Style.RESET_ALL).strip().lower()
         interval_changes = {}
         if change_interval == "y":
-            num_changes = int(input(Fore.CYAN + "🔄 Berapa kali ganti interval? " + Style.RESET_ALL))
+            num_changes = int(input(Fore.CYAN + "🔄 How many interval changes? " + Style.RESET_ALL))
             for _ in range(num_changes):
-                after_delay = int(input(Fore.CYAN + "🕒 Setelah delay nomor berapa? " + Style.RESET_ALL))
-                new_min_interval = int(input(Fore.CYAN + "🕒 Masukkan min interval baru (detik): " + Style.RESET_ALL))
-                new_max_interval = int(input(Fore.CYAN + "🕒 Masukkan max interval baru (detik): " + Style.RESET_ALL))
+                after_delay = int(input(Fore.CYAN + "🕒 After which delay number? " + Style.RESET_ALL))
+                new_min_interval = int(input(Fore.CYAN + "🕒 Enter new min interval (seconds): " + Style.RESET_ALL))
+                new_max_interval = int(input(Fore.CYAN + "🕒 Enter new max interval (seconds): " + Style.RESET_ALL))
                 interval_changes[after_delay] = (new_min_interval, new_max_interval)
 
         tokens_dict = dict(zip(bot_ids, [token for _, token, _, _ in tokens]))
@@ -433,7 +433,7 @@ def main():
         if start_time_minutes > 0:
             countdown(start_time_minutes)
 
-        log_message("info", "🤖 Memulai percakapan otomatis...")
+        log_message("info", "🤖 Starting automatic conversation...")
 
         last_message_per_sender = {}
         message_count = 0
@@ -446,7 +446,7 @@ def main():
                 reply_to = dialog.get("reply_to", None)
 
                 if sender_index >= len(tokens):
-                    log_message("error", f"⚠️ Indeks pengirim {sender_index} di luar batas.")
+                    log_message("error", f"⚠️ Sender index {sender_index} is out of bounds.")
                     return
 
                 token_name, token, min_interval, max_interval = tokens[sender_index]
@@ -459,32 +459,32 @@ def main():
 
                 custom_delay = dialog.get("delay", None)
                 if custom_delay:
-                    log_message("info", f"⏳ Delay kustom dari JSON terdeteksi: {custom_delay} detik")
+                    log_message("info", f"⏳ Custom delay from JSON detected: {custom_delay} seconds")
                     time.sleep(custom_delay)
-                    log_message("info", "⏳ Melanjutkan setelah delay kustom...")
+                    log_message("info", "⏳ Resuming after custom delay...")
                     continue
 
                 wait_time = random.uniform(min_interval, max_interval)
-                log_message("info", f"⏳ Menunggu {wait_time:.2f} detik sebelum pesan berikutnya...")
+                log_message("info", f"⏳ Waiting {wait_time:.2f} seconds before the next message...")
                 time.sleep(wait_time)
 
                 message_count += 1
 
                 if delay_count < max_delays and delay_count < len(delay_settings) and message_count >= delay_settings[delay_count][0]:
-                    log_message("info", f"⏸️ Berhenti selama {delay_settings[delay_count][1]} detik... ({delay_count + 1}/{max_delays})")
+                    log_message("info", f"⏸️ Pausing for {delay_settings[delay_count][1]} seconds... ({delay_count + 1}/{max_delays})")
                     time.sleep(delay_settings[delay_count][1])
                     delay_count += 1
 
                 if delay_count in interval_changes:
                     new_min_interval, new_max_interval = interval_changes[delay_count]
                     tokens[sender_index] = (token_name, token, new_min_interval, new_max_interval)
-                    log_message("info", f"⏳ Interval diubah menjadi {new_min_interval}-{new_max_interval} detik setelah delay {delay_count}/{max_delays}")
+                    log_message("info", f"⏳ Interval changed to {new_min_interval}-{new_max_interval} seconds after delay {delay_count}/{max_delays}")
 
             except Exception as e:
-                log_message("error", f"❗ Terjadi kesalahan: {e}")
+                log_message("error", f"❗ An error occurred: {e}")
                 return
 
-        log_message("info", "🎉 Percakapan selesai.")
+        log_message("info", "🎉 Conversation completed.")
 
     except (FileNotFoundError, ValueError, json.JSONDecodeError) as e:
         log_message("error", f"❗ Error: {e}")
