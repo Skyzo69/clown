@@ -10,9 +10,9 @@ _A stupid Discord bot to automate conversations with predefined dialogs, dynamic
   ```bash
   pip install -r requirements.txt
   
-Setup Files
+## Setup Files
 
-## 1. token.txt
+### 1. token.txt
 
 - Format: token_name:token:min_interval:max_interval (one per line).
 
@@ -24,7 +24,7 @@ Setup Files
 - Notes: Minimum 2 tokens required. Intervals in seconds.
 
 
-## 2. template.txt
+### 2. template.txt
 
 - Using AI prompts for better results
 
@@ -38,7 +38,7 @@ Setup Files
       Kabar baik, kamu gimana?
 
 
-## 3. dialog.txt
+### 3. dialog.txt
 
 - Using AI prompts for better results
 
