@@ -35,7 +35,7 @@ _A stupid Discord bot to automate conversations with predefined dialogs, dynamic
       [thanks|thx]  
       Np bro  
       All good  
-        
+      You're welcome  
 
 ### 3. dialog.txt
 
