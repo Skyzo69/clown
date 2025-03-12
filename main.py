@@ -42,7 +42,7 @@ def log_message(level, message):
 
 def display_banner():
     """Displays a banner using pyfiglet"""
-    banner = pyfiglet.figlet_format("BOT DIALOG")
+    banner = pyfiglet.figlet_format("CLOWN BOT")
     print(Fore.CYAN + banner)
 
 def format_time(remaining_seconds):
