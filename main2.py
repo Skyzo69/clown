@@ -269,15 +269,23 @@ def respond_to_message(channel_id, token_name, token, message_content, reply_tex
     if message_id:
         auto_message_ids.add(message_id)
 
-def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, keyword_replies, processed_messages, reply_indices, manual_messages, auto_message_ids, reply_delay_min, reply_delay_max, keyword_delay, max_keyword_users):
+def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, keyword_replies, processed_messages, reply_indices, manual_messages, auto_message_ids, reply_delay_min, reply_delay_max, keyword_reply_delay_min, keyword_reply_delay_max, max_keyword_users, keyword_cooldown):
     global last_processed_id
     user_bot_indices = {}
     keyword_users = set()
     used_replies = set()
     used_replies_per_token = {}
+    keyword_detection_active = True
+    last_keyword_reset_time = time.time()
 
     while True:
         try:
+            current_time = time.time()
+            if not keyword_detection_active and (current_time - last_keyword_reset_time >= keyword_cooldown):
+                keyword_detection_active = True
+                keyword_users.clear()
+                log_message("info", "🔍 Keyword detection for reply.txt is now active again.")
+
             params = {"limit": 100}
             if last_processed_id:
                 params["after"] = last_processed_id
@@ -316,7 +324,7 @@ def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates,
                                 else:
                                     log_message("warning", f"❌ [{token_name}] No matching template found.")
 
-                        if author_id not in bot_ids and not message.get("referenced_message") and len(keyword_users) < max_keyword_users:
+                        if keyword_detection_active and author_id not in bot_ids and not message.get("referenced_message"):
                             for keyword in keyword_replies:
                                 if keyword in message["content"].lower():
                                     if author_id not in user_bot_indices:
@@ -329,11 +337,15 @@ def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates,
                                     if reply_text:
                                         thread = threading.Thread(
                                             target=respond_to_message,
-                                            args=(channel_id, token_name, token, message["content"], reply_text, message_id, bot_id, manual_messages, auto_message_ids, keyword_delay)
+                                            args=(channel_id, token_name, token, message["content"], reply_text, message_id, bot_id, manual_messages, auto_message_ids, random.uniform(keyword_reply_delay_min, keyword_reply_delay_max))
                                         )
                                         thread.start()
                                         user_bot_indices[author_id] += 1
                                         log_message("info", f"🔍 [{token_name}] Detected keyword '{keyword}' from {message['author']['username']}: '{message['content']}'")
+                                    if len(keyword_users) >= max_keyword_users:
+                                        keyword_detection_active = False
+                                        last_keyword_reset_time = time.time()
+                                        log_message("info", f"⏳ Keyword detection for reply.txt paused for {keyword_cooldown} seconds.")
                                     break
                         last_processed_id = message["id"]
             else:
@@ -404,8 +416,10 @@ def main():
 
         reply_delay_min = int(input(Fore.CYAN + "⏳ Enter min reply delay for template.txt (seconds): " + Style.RESET_ALL))
         reply_delay_max = int(input(Fore.CYAN + "⏳ Enter max reply delay for template.txt (seconds): " + Style.RESET_ALL))
-        keyword_delay = int(input(Fore.CYAN + "⏳ Enter fixed reply delay for reply.txt (seconds): " + Style.RESET_ALL))
+        keyword_reply_delay_min = int(input(Fore.CYAN + "⏳ Enter min reply delay for reply.txt (seconds): " + Style.RESET_ALL))
+        keyword_reply_delay_max = int(input(Fore.CYAN + "⏳ Enter max reply delay for reply.txt (seconds): " + Style.RESET_ALL))
         max_keyword_users = int(input(Fore.CYAN + "👥 Enter max number of users for keyword detection: " + Style.RESET_ALL))
+        keyword_cooldown = int(input(Fore.CYAN + "⏳ Enter keyword detection cooldown for reply.txt (seconds): " + Style.RESET_ALL))
 
         max_delays = int(input(Fore.CYAN + "🔁 Enter number of delays: " + Style.RESET_ALL))
         delay_settings = []
@@ -438,7 +452,7 @@ def main():
 
         polling_thread = threading.Thread(
             target=poll_messages,
-            args=(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, keyword_replies, processed_messages, reply_indices, manual_messages, auto_message_ids, reply_delay_min, reply_delay_max, keyword_delay, max_keyword_users)
+            args=(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, keyword_replies, processed_messages, reply_indices, manual_messages, auto_message_ids, reply_delay_min, reply_delay_max, keyword_reply_delay_min, keyword_reply_delay_max, max_keyword_users, keyword_cooldown)
         )
         polling_thread.daemon = True
         polling_thread.start()
