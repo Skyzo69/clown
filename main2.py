@@ -19,19 +19,11 @@ def get_current_time():
     return datetime.now().strftime("%H:%M:%S")
 
 def log_message(level, message):
-    """Prints a message with color and logs it to a file"""
     current_time = get_current_time()
     full_message = f"[{current_time}] {message}"
-
-    colors = {
-        "info": Fore.GREEN,
-        "warning": Fore.YELLOW,
-        "error": Fore.RED
-    }
-
+    colors = {"info": Fore.GREEN, "warning": Fore.YELLOW, "error": Fore.RED}
     color = colors.get(level, Fore.WHITE)
     print(color + full_message)
-
     if level == "info":
         logging.info(full_message)
     elif level == "warning":
@@ -41,17 +33,14 @@ def log_message(level, message):
         exit(1)
 
 def display_banner():
-    """Displays a banner using pyfiglet"""
     banner = pyfiglet.figlet_format("CLOWN BOT")
     print(Fore.CYAN + banner)
 
 def format_time(remaining_seconds):
-    """Formats time into hours, minutes, and seconds"""
     formatted_time = str(timedelta(seconds=remaining_seconds))
     return formatted_time
 
 def display_progress_bar(progress, total):
-    """Creates a progress bar with a length of 30 characters"""
     bar_length = 30
     filled_length = int(bar_length * progress / total)
     bar = "█" * filled_length + "▒" * (bar_length - filled_length)
@@ -59,18 +48,14 @@ def display_progress_bar(progress, total):
 
 def countdown(start_time_minutes):
     total_seconds = start_time_minutes * 60
-
     if start_time_minutes >= 60:
         hours = start_time_minutes // 60
         minutes = start_time_minutes % 60
         log_message("info", f"\n🕒 Starting in {hours} hours {minutes} minutes...\n")
-
     while total_seconds > 0:
         time_str = format_time(total_seconds)
         bar = display_progress_bar(total_seconds, start_time_minutes * 60)
-
         print(Fore.CYAN + f"\r⏳ {bar} {time_str} remaining...", end="", flush=True)
-
         if total_seconds > 600:
             sleep_time = 300
         elif total_seconds > 300:
@@ -85,10 +70,8 @@ def countdown(start_time_minutes):
                 print(Fore.RED + f"\r⏳ {bar} {i} seconds remaining... ", end="", flush=True)
                 time.sleep(1)
             break
-
         time.sleep(sleep_time)
         total_seconds -= sleep_time
-
     print(Fore.GREEN + "\n🚀 Starting now!\n")
 
 def validate_token(token_name, token):
@@ -106,7 +89,6 @@ def validate_token(token_name, token):
         return False
 
 def get_user_id_from_token(token):
-    """Gets the user ID from the token"""
     headers = {"Authorization": token}
     try:
         response = requests.get("https://discord.com/api/v9/users/@me", headers=headers)
@@ -122,23 +104,19 @@ def get_user_id_from_token(token):
 def typing_indicator(channel_id, token, typing_time):
     headers = {'Authorization': token}
     start_time = time.time()
-
     log_message("info", f"💬 Bot is typing for {typing_time:.2f} seconds...")
-
     while time.time() - start_time < typing_time:
         try:
             response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/typing", headers=headers)
             if response.status_code not in [200, 204]:
                 log_message("warning", f"⚠️ Typing request failed: {response.status_code}")
                 break
-
             remaining_time = typing_time - (time.time() - start_time)
             sleep_time = min(remaining_time, 5)
             if sleep_time > 0:
                 time.sleep(sleep_time)
             else:
                 break
-
         except requests.exceptions.RequestException as e:
             log_message("error", f"❗ Error while sending typing indicator: {e}")
             break
@@ -148,16 +126,12 @@ def send_message(channel_id, token_name, token, message, message_reference=None)
     payload = {"content": message}
     if message_reference:
         payload["message_reference"] = {"message_id": message_reference}
-
     word_count = len(message.split())
     typing_time = random.uniform(0.4 * word_count, 0.7 * word_count)
-
     thread = threading.Thread(target=typing_indicator, args=(channel_id, token, typing_time))
     thread.start()
-
     log_message("info", f"⌨️ Typing for {typing_time:.2f} seconds...")
     time.sleep(typing_time)
-
     while True:
         try:
             response = requests.post(f"https://discord.com/api/v9/channels/{channel_id}/messages", json=payload, headers=headers)
@@ -179,7 +153,6 @@ def send_message(channel_id, token_name, token, message, message_reference=None)
 def display_token_list(tokens):
     header = ["Token Name", "Min Interval (s)", "Max Interval (s)"]
     table = [(name, min_interval, max_interval) for name, _, min_interval, max_interval in tokens]
-
     print(Fore.CYAN + "\n" + "="*40)
     print(Fore.YELLOW + "           🎛️ TOKEN LIST")
     print(Fore.CYAN + "="*40)
@@ -187,7 +160,6 @@ def display_token_list(tokens):
     print(Fore.CYAN + "="*40 + "\n")
 
 def load_templates(file_path="template.txt"):
-    """Loads templates from a file with support for multiple keywords separated by |"""
     templates = {}
     try:
         with open(file_path, "r", encoding="utf-8") as f:
@@ -210,54 +182,66 @@ def load_templates(file_path="template.txt"):
     return templates
 
 def load_reply_keywords(file_path="reply.txt"):
-    """Loads keyword-reply pairs from a file"""
     keywords = {}
     try:
         with open(file_path, "r", encoding="utf-8") as f:
-            for line in f.readlines():
+            lines = f.readlines()
+            key = None
+            for line in lines:
                 line = line.strip()
-                if ":" in line:
-                    key, response = line.split(":", 1)
-                    keywords[key.lower()] = response
+                if line.startswith("[") and line.endswith("]"):
+                    key = line[1:-1].lower().split("|")
+                    for k in key:
+                        if k not in keywords:
+                            keywords[k] = []
+                elif key and line:
+                    for k in key:
+                        keywords[k].append(line)
     except FileNotFoundError:
         log_message("error", f"❗ Reply file {file_path} not found.")
     except Exception as e:
         log_message("error", f"❗ Error loading reply keywords: {e}")
     return keywords
 
-def get_reply(message, reply_templates, reply_indices, used_keywords):
-    """Gets a reply based on message content, using sequential replies and avoiding used keywords"""
-    available_keys = [key for key in reply_templates if key in message.lower() and key not in used_keywords]
+def get_reply(message, reply_templates, reply_indices, used_replies):
+    available_keys = [key for key in reply_templates if key in message.lower()]
     if not available_keys:
-        return None, None
-
+        return None
     selected_key = available_keys[0]
     responses = reply_templates[selected_key]
     if not responses:
-        return None, None
-
+        return None
     index = reply_indices.get(selected_key, 0)
     reply = responses[index]
+    used_replies.add(reply)
     reply_indices[selected_key] = (index + 1) % len(responses)
+    return reply
 
-    return reply, selected_key
+def get_keyword_reply(keyword_replies, keyword, used_replies_per_token, token_name):
+    responses = keyword_replies[keyword]
+    if not responses:
+        return None
+    available_replies = [r for r in responses if r not in used_replies_per_token.get(token_name, set())]
+    if not available_replies:
+        used_replies_per_token[token_name] = set()
+        available_replies = responses
+    reply = random.choice(available_replies)
+    if token_name not in used_replies_per_token:
+        used_replies_per_token[token_name] = set()
+    used_replies_per_token[token_name].add(reply)
+    return reply
 
 def should_respond(data, bot_ids, processed_messages, manual_messages, auto_message_ids):
-    """Determines which bots should respond (returns a list of bot_ids)"""
     message_id = data.get("id")
     if message_id in processed_messages:
         return []
     processed_messages.add(message_id)
-
     if data.get("edited_timestamp"):
         return []
-
     author_id = data.get("author", {}).get("id")
     if author_id in bot_ids:
         return []
-
     responding_bots = []
-
     referenced_message = data.get("referenced_message", {})
     if referenced_message:
         referenced_author_id = referenced_message.get("author", {}).get("id")
@@ -266,7 +250,6 @@ def should_respond(data, bot_ids, processed_messages, manual_messages, auto_mess
                 log_message("info", f"🚫 Bot {referenced_author_id} will not respond due to a more recent manual message.")
             else:
                 responding_bots.append(referenced_author_id)
-
     mentions = data.get("mentions", [])
     for user in mentions:
         if user["id"] in bot_ids and user["id"] not in responding_bots:
@@ -274,34 +257,24 @@ def should_respond(data, bot_ids, processed_messages, manual_messages, auto_mess
                 log_message("info", f"🚫 Bot {user['id']} will not respond due to a more recent manual message.")
             else:
                 responding_bots.append(user["id"])
-
     return responding_bots
 
-def respond_to_message(channel_id, token_name, token, message_content, reply_text, message_reference, bot_id, manual_messages, auto_message_ids):
-    """Function to send a response in a separate thread with manual message check"""
-    reply_delay = random.uniform(15, 60)
-    log_message("info", f"⏳ [{token_name}] Waiting {reply_delay:.2f} seconds before replying...")
-
+def respond_to_message(channel_id, token_name, token, message_content, reply_text, message_reference, bot_id, manual_messages, auto_message_ids, delay):
+    log_message("info", f"⏳ [{token_name}] Waiting {delay:.2f} seconds before replying...")
+    time.sleep(delay)
     if bot_id in manual_messages and manual_messages[bot_id] > message_reference and manual_messages[bot_id] not in auto_message_ids:
         log_message("info", f"🚫 [{token_name}] Automatic message canceled due to a more recent manual message.")
         return
-
-    time.sleep(reply_delay)
-    
-    if bot_id in manual_messages and manual_messages[bot_id] > message_reference and manual_messages[bot_id] not in auto_message_ids:
-        log_message("info", f"🚫 [{token_name}] Automatic message canceled due to a more recent manual message.")
-        return
-
     message_id = send_message(channel_id, token_name, token, reply_text, message_reference)
     if message_id:
         auto_message_ids.add(message_id)
 
-def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, keyword_replies, processed_messages, reply_indices, manual_messages, auto_message_ids, detection_interval, max_detections):
-    """Polls new messages and processes replies/mentions and keyword detection for multiple bots"""
+def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, keyword_replies, processed_messages, reply_indices, manual_messages, auto_message_ids, reply_delay_min, reply_delay_max, keyword_delay, max_keyword_users):
     global last_processed_id
-    detection_timestamps = []  # List untuk melacak waktu deteksi
-    detected_users = []  # List untuk melacak pengguna yang sudah dideteksi
-    responding_bots = []  # List untuk melacak bot yang sudah membalas dalam periode deteksi
+    user_bot_indices = {}
+    keyword_users = set()
+    used_replies = set()
+    used_replies_per_token = {}
 
     while True:
         try:
@@ -330,48 +303,38 @@ def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates,
                             author = message["author"]["username"]
                             content = message["content"]
                             log_message("info", f"🔔 Message from {author}: '{content}'")
-
-                            used_keywords = set()
                             for bot_id in bot_ids_to_respond:
                                 token = tokens_dict[bot_id]
                                 token_name = names_dict[bot_id]
-                                reply_text, selected_key = get_reply(message["content"], reply_templates, reply_indices, used_keywords)
-                                if reply_text and selected_key:
-                                    used_keywords.add(selected_key)
+                                reply_text = get_reply(content, reply_templates, reply_indices, used_replies)
+                                if reply_text:
                                     thread = threading.Thread(
                                         target=respond_to_message,
-                                        args=(channel_id, token_name, token, message["content"], reply_text, message["id"], bot_id, manual_messages, auto_message_ids)
+                                        args=(channel_id, token_name, token, content, reply_text, message_id, bot_id, manual_messages, auto_message_ids, random.uniform(reply_delay_min, reply_delay_max))
                                     )
                                     thread.start()
                                 else:
-                                    log_message("warning", f"❌ [{token_name}] No matching template or keyword already used.")
+                                    log_message("warning", f"❌ [{token_name}] No matching template found.")
 
-                        current_time = time.time()
-                        detection_timestamps = [t for t in detection_timestamps if current_time - t < detection_interval * 60]
-                        if (len(detection_timestamps) < max_detections and 
-                            author_id not in bot_ids and 
-                            author_id not in detected_users):
-                            for keyword, reply in keyword_replies.items():
+                        if author_id not in bot_ids and not message.get("referenced_message") and len(keyword_users) < max_keyword_users:
+                            for keyword in keyword_replies:
                                 if keyword in message["content"].lower():
-                                    available_bots = [bot for bot in bot_ids if bot not in responding_bots]
-                                    if available_bots:
-                                        bot_id = random.choice(available_bots)
-                                        responding_bots.append(bot_id)
-                                        if len(responding_bots) > 2:
-                                            responding_bots.pop(0)
-                                        detected_users.append(author_id)
-                                        if len(detected_users) > 2:
-                                            detected_users.pop(0)
-                                        token = tokens_dict[bot_id]
-                                        token_name = names_dict[bot_id]
+                                    if author_id not in user_bot_indices:
+                                        user_bot_indices[author_id] = 0
+                                        keyword_users.add(author_id)
+                                    bot_id = bot_ids[user_bot_indices[author_id] % len(bot_ids)]
+                                    token = tokens_dict[bot_id]
+                                    token_name = names_dict[bot_id]
+                                    reply_text = get_keyword_reply(keyword_replies, keyword, used_replies_per_token, token_name)
+                                    if reply_text:
                                         thread = threading.Thread(
                                             target=respond_to_message,
-                                            args=(channel_id, token_name, token, message["content"], reply, message["id"], bot_id, manual_messages, auto_message_ids)
+                                            args=(channel_id, token_name, token, message["content"], reply_text, message_id, bot_id, manual_messages, auto_message_ids, keyword_delay)
                                         )
                                         thread.start()
-                                        detection_timestamps.append(current_time)
+                                        user_bot_indices[author_id] += 1
                                         log_message("info", f"🔍 [{token_name}] Detected keyword '{keyword}' from {message['author']['username']}: '{message['content']}'")
-                                        break
+                                    break
                         last_processed_id = message["id"]
             else:
                 log_message("warning", f"⚠️ Failed to fetch messages: {response.status_code}")
@@ -380,7 +343,6 @@ def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates,
         time.sleep(5)
 
 def get_latest_message_id(channel_id, token):
-    """Fetches the latest message ID in the channel"""
     response = requests.get(
         f"https://discord.com/api/v9/channels/{channel_id}/messages",
         headers={"Authorization": token},
@@ -440,10 +402,10 @@ def main():
         if start_time_minutes < 0:
             raise ValueError("⚠️ Start time cannot be negative.")
 
-        detection_interval = int(input(Fore.CYAN + "⏳ Enter detection interval in minutes for keyword detection: " + Style.RESET_ALL))
-        if detection_interval < 0:
-            raise ValueError("⚠️ Detection interval cannot be negative.")
-        max_detections = 2
+        reply_delay_min = int(input(Fore.CYAN + "⏳ Enter min reply delay for template.txt (seconds): " + Style.RESET_ALL))
+        reply_delay_max = int(input(Fore.CYAN + "⏳ Enter max reply delay for template.txt (seconds): " + Style.RESET_ALL))
+        keyword_delay = int(input(Fore.CYAN + "⏳ Enter fixed reply delay for reply.txt (seconds): " + Style.RESET_ALL))
+        max_keyword_users = int(input(Fore.CYAN + "👥 Enter max number of users for keyword detection: " + Style.RESET_ALL))
 
         max_delays = int(input(Fore.CYAN + "🔁 Enter number of delays: " + Style.RESET_ALL))
         delay_settings = []
@@ -476,7 +438,7 @@ def main():
 
         polling_thread = threading.Thread(
             target=poll_messages,
-            args=(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, keyword_replies, processed_messages, reply_indices, manual_messages, auto_message_ids, detection_interval, max_detections)
+            args=(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, keyword_replies, processed_messages, reply_indices, manual_messages, auto_message_ids, reply_delay_min, reply_delay_max, keyword_delay, max_keyword_users)
         )
         polling_thread.daemon = True
         polling_thread.start()
