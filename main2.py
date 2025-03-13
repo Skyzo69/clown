@@ -304,7 +304,8 @@ def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates,
     while True:
         try:
             current_time = time.time()
-            if not keyword_detection_active and (current_time - last_keyword_reset_time >= keyword_cooldown):
+            # Ubah keyword_cooldown ke detik (dikalikan 60 karena sekarang dalam menit)
+            if not keyword_detection_active and (current_time - last_keyword_reset_time >= keyword_cooldown * 60):
                 keyword_detection_active = True
                 keyword_users.clear()
                 user_bot_count.clear()  # Reset bot count when cooldown ends
@@ -362,36 +363,39 @@ def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates,
                                 log_message("info", f"🚫 User {author_id} has been responded to by all bots for reply.txt.")
                                 continue
 
-                            for keyword in keyword_replies:
-                                if keyword in message["content"].lower():
-                                    if author_id not in user_bot_indices:
-                                        user_bot_indices[author_id] = 0
-                                    bot_id = bot_ids[user_bot_indices[author_id] % len(bot_ids)]
-                                    # Check if this bot has already responded to this message
-                                    if message_id in responded_messages_per_bot[bot_id]:
-                                        log_message("info", f"🚫 Bot {bot_id} already responded to message {message_id}.")
-                                        continue
-                                    token = tokens_dict[bot_id]
-                                    token_name = names_dict[bot_id]
-                                    reply_text = get_keyword_reply(keyword_replies, keyword, used_replies_per_keyword, token_name)
-                                    if reply_text:
-                                        thread = threading.Thread(
-                                            target=respond_to_message,
-                                            args=(channel_id, token_name, token, message["content"], reply_text, message_id, bot_id, manual_messages, auto_message_ids, random.uniform(keyword_reply_delay_min, keyword_reply_delay_max))
-                                        )
-                                        thread.start()
-                                        user_bot_indices[author_id] += 1
-                                        if author_id not in user_bot_count:
-                                            user_bot_count[author_id] = 0
-                                        user_bot_count[author_id] += 1  # Increment the count of bots that responded
-                                        keyword_users.add(author_id)  # Mark this user as responded to
-                                        responded_messages_per_bot[bot_id].add(message_id)
-                                        log_message("info", f"🔍 [{token_name}] Detected keyword '{keyword}' from {message['author']['username']}: '{message['content']}'")
-                                    if len(keyword_users) >= max_keyword_users:
-                                        keyword_detection_active = False
-                                        last_keyword_reset_time = time.time()
-                                        log_message("info", f"⏳ Keyword detection for reply.txt paused for {keyword_cooldown} seconds.")
-                                    break
+                            # Deteksi kata kunci dengan pencocokan substring (sama seperti template.txt)
+                            message_content_lower = message["content"].lower()
+                            available_keys = [key for key in keyword_replies if key in message_content_lower]
+                            if available_keys:
+                                if author_id not in user_bot_indices:
+                                    user_bot_indices[author_id] = 0
+                                bot_id = bot_ids[user_bot_indices[author_id] % len(bot_ids)]
+                                # Check if this bot has already responded to this message
+                                if message_id in responded_messages_per_bot[bot_id]:
+                                    log_message("info", f"🚫 Bot {bot_id} already responded to message {message_id}.")
+                                    continue
+                                token = tokens_dict[bot_id]
+                                token_name = names_dict[bot_id]
+                                selected_key = available_keys[0]  # Pilih kata kunci pertama yang cocok
+                                reply_text = get_keyword_reply(keyword_replies, selected_key, used_replies_per_keyword, token_name)
+                                if reply_text:
+                                    thread = threading.Thread(
+                                        target=respond_to_message,
+                                        args=(channel_id, token_name, token, message["content"], reply_text, message_id, bot_id, manual_messages, auto_message_ids, random.uniform(keyword_reply_delay_min, keyword_reply_delay_max))
+                                    )
+                                    thread.start()
+                                    user_bot_indices[author_id] += 1
+                                    if author_id not in user_bot_count:
+                                        user_bot_count[author_id] = 0
+                                    user_bot_count[author_id] += 1  # Increment the count of bots that responded
+                                    keyword_users.add(author_id)  # Mark this user as responded to
+                                    responded_messages_per_bot[bot_id].add(message_id)
+                                    log_message("info", f"🔍 [{token_name}] Detected keyword '{selected_key}' from {message['author']['username']}: '{message['content']}'")
+                                if len(keyword_users) >= max_keyword_users:
+                                    keyword_detection_active = False
+                                    last_keyword_reset_time = time.time()
+                                    log_message("info", f"⏳ Keyword detection for reply.txt paused for {keyword_cooldown} minutes.")
+
                         last_processed_id = message["id"]
             else:
                 log_message("warning", f"⚠️ Failed to fetch messages: {response.status_code}")
@@ -464,7 +468,8 @@ def main():
         keyword_reply_delay_min = int(input(Fore.CYAN + "⏳ Enter min reply delay for reply.txt (seconds): " + Style.RESET_ALL))
         keyword_reply_delay_max = int(input(Fore.CYAN + "⏳ Enter max reply delay for reply.txt (seconds): " + Style.RESET_ALL))
         max_keyword_users = int(input(Fore.CYAN + "👥 Enter max number of users for keyword detection: " + Style.RESET_ALL))
-        keyword_cooldown = int(input(Fore.CYAN + "⏳ Enter keyword detection cooldown for reply.txt (seconds): " + Style.RESET_ALL))
+        # Ubah input menjadi menit
+        keyword_cooldown = int(input(Fore.CYAN + "⏳ Enter keyword detection cooldown for reply.txt (minutes): " + Style.RESET_ALL))
 
         max_delays = int(input(Fore.CYAN + "🔁 Enter number of delays: " + Style.RESET_ALL))
         delay_settings = []
