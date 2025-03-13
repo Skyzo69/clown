@@ -217,18 +217,19 @@ def get_reply(message, reply_templates, reply_indices, used_replies):
     reply_indices[selected_key] = (index + 1) % len(responses)
     return reply
 
-def get_keyword_reply(keyword_replies, keyword, used_replies_per_token, token_name):
+def get_keyword_reply(keyword_replies, keyword, used_replies_per_keyword, token_name):
     responses = keyword_replies[keyword]
     if not responses:
         return None
-    available_replies = [r for r in responses if r not in used_replies_per_token.get(token_name, set())]
+    # Track used replies globally for this keyword
+    if keyword not in used_replies_per_keyword:
+        used_replies_per_keyword[keyword] = set()
+    available_replies = [r for r in responses if r not in used_replies_per_keyword[keyword]]
     if not available_replies:
-        used_replies_per_token[token_name] = set()
+        used_replies_per_keyword[keyword] = set()
         available_replies = responses
     reply = random.choice(available_replies)
-    if token_name not in used_replies_per_token:
-        used_replies_per_token[token_name] = set()
-    used_replies_per_token[token_name].add(reply)
+    used_replies_per_keyword[keyword].add(reply)
     return reply
 
 def should_respond(data, bot_ids, processed_messages, manual_messages, auto_message_ids):
@@ -259,6 +260,25 @@ def should_respond(data, bot_ids, processed_messages, manual_messages, auto_mess
                 responding_bots.append(user["id"])
     return responding_bots
 
+def detect_spam(author_id, message_timestamps, spam_threshold=3, spam_window=30, min_interval=5):
+    current_time = time.time()
+    if author_id not in message_timestamps:
+        message_timestamps[author_id] = []
+    message_timestamps[author_id].append(current_time)
+    # Remove timestamps older than the spam window
+    message_timestamps[author_id] = [t for t in message_timestamps[author_id] if current_time - t <= spam_window]
+    # Check if user sent too many messages in the spam window
+    if len(message_timestamps[author_id]) > spam_threshold:
+        log_message("warning", f"🚫 Detected potential spam from user {author_id}: Too many messages in {spam_window} seconds.")
+        return True
+    # Check if messages are sent too quickly
+    if len(message_timestamps[author_id]) >= 2:
+        last_two = message_timestamps[author_id][-2:]
+        if last_two[1] - last_two[0] < min_interval:
+            log_message("warning", f"🚫 Detected potential spam from user {author_id}: Messages sent too quickly (less than {min_interval} seconds apart).")
+            return True
+    return False
+
 def respond_to_message(channel_id, token_name, token, message_content, reply_text, message_reference, bot_id, manual_messages, auto_message_ids, delay):
     log_message("info", f"⏳ [{token_name}] Waiting {delay:.2f} seconds before replying...")
     time.sleep(delay)
@@ -272,11 +292,14 @@ def respond_to_message(channel_id, token_name, token, message_content, reply_tex
 def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates, keyword_replies, processed_messages, reply_indices, manual_messages, auto_message_ids, reply_delay_min, reply_delay_max, keyword_reply_delay_min, keyword_reply_delay_max, max_keyword_users, keyword_cooldown):
     global last_processed_id
     user_bot_indices = {}
-    keyword_users = set()
+    keyword_users = set()  # Track users responded to by any bot for reply.txt
     used_replies = set()
-    used_replies_per_token = {}
+    used_replies_per_keyword = {}  # Track used replies globally per keyword
     keyword_detection_active = True
     last_keyword_reset_time = time.time()
+    message_timestamps = {}  # Track timestamps for spam detection
+    responded_messages_per_bot = {bot_id: set() for bot_id in bot_ids}  # Track messages responded to by each bot
+    user_bot_count = {}  # Track number of bots that have responded to each user for reply.txt
 
     while True:
         try:
@@ -284,6 +307,7 @@ def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates,
             if not keyword_detection_active and (current_time - last_keyword_reset_time >= keyword_cooldown):
                 keyword_detection_active = True
                 keyword_users.clear()
+                user_bot_count.clear()  # Reset bot count when cooldown ends
                 log_message("info", "🔍 Keyword detection for reply.txt is now active again.")
 
             params = {"limit": 100}
@@ -312,6 +336,9 @@ def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates,
                             content = message["content"]
                             log_message("info", f"🔔 Message from {author}: '{content}'")
                             for bot_id in bot_ids_to_respond:
+                                if message_id in responded_messages_per_bot[bot_id]:
+                                    log_message("info", f"🚫 Bot {bot_id} already responded to message {message_id}.")
+                                    continue
                                 token = tokens_dict[bot_id]
                                 token_name = names_dict[bot_id]
                                 reply_text = get_reply(content, reply_templates, reply_indices, used_replies)
@@ -321,19 +348,32 @@ def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates,
                                         args=(channel_id, token_name, token, content, reply_text, message_id, bot_id, manual_messages, auto_message_ids, random.uniform(reply_delay_min, reply_delay_max))
                                     )
                                     thread.start()
+                                    responded_messages_per_bot[bot_id].add(message_id)
                                 else:
                                     log_message("warning", f"❌ [{token_name}] No matching template found.")
 
                         if keyword_detection_active and author_id not in bot_ids and not message.get("referenced_message"):
+                            # Check for spam
+                            if detect_spam(author_id, message_timestamps):
+                                continue
+
+                            # Check if this user has already been responded to by all bots
+                            if author_id in user_bot_count and user_bot_count[author_id] >= len(bot_ids):
+                                log_message("info", f"🚫 User {author_id} has been responded to by all bots for reply.txt.")
+                                continue
+
                             for keyword in keyword_replies:
                                 if keyword in message["content"].lower():
                                     if author_id not in user_bot_indices:
                                         user_bot_indices[author_id] = 0
-                                        keyword_users.add(author_id)
                                     bot_id = bot_ids[user_bot_indices[author_id] % len(bot_ids)]
+                                    # Check if this bot has already responded to this message
+                                    if message_id in responded_messages_per_bot[bot_id]:
+                                        log_message("info", f"🚫 Bot {bot_id} already responded to message {message_id}.")
+                                        continue
                                     token = tokens_dict[bot_id]
                                     token_name = names_dict[bot_id]
-                                    reply_text = get_keyword_reply(keyword_replies, keyword, used_replies_per_token, token_name)
+                                    reply_text = get_keyword_reply(keyword_replies, keyword, used_replies_per_keyword, token_name)
                                     if reply_text:
                                         thread = threading.Thread(
                                             target=respond_to_message,
@@ -341,6 +381,11 @@ def poll_messages(channel_id, bot_ids, tokens_dict, names_dict, reply_templates,
                                         )
                                         thread.start()
                                         user_bot_indices[author_id] += 1
+                                        if author_id not in user_bot_count:
+                                            user_bot_count[author_id] = 0
+                                        user_bot_count[author_id] += 1  # Increment the count of bots that responded
+                                        keyword_users.add(author_id)  # Mark this user as responded to
+                                        responded_messages_per_bot[bot_id].add(message_id)
                                         log_message("info", f"🔍 [{token_name}] Detected keyword '{keyword}' from {message['author']['username']}: '{message['content']}'")
                                     if len(keyword_users) >= max_keyword_users:
                                         keyword_detection_active = False
