@@ -420,20 +420,8 @@ class GalxeAccount:
 
     quote_mention_re = re.compile(r'mention \d+ friends')
 
-    # ... (kode sebelumnya tetap sama)
-
     async def _complete_twitter(self, campaign_id: str, credential, fake_twitter) -> bool:
-        # Cek apakah Twitter sudah linked berdasarkan profile
-        existed_twitter_username = self.profile.get('twitterUserName', '')
-        if existed_twitter_username != '':
-            logger.info(f'{self.idx}) Twitter account already linked: @{existed_twitter_username}, skipping link process')
-            # Kalau fake_twitter aktif, langsung return True (sesuai logika asli)
-            if fake_twitter:
-                return True
-        else:
-            # Kalau belum linked, baru jalankan proses link_twitter
-            await self.link_twitter(fake_twitter)
-
+        await self.link_twitter(fake_twitter)
         await self.add_typed_credential(campaign_id, credential)
         if credential['id'] in self.twitter_credentials_done:
             logger.info(f'{self.idx}) Twitter action was already done. Just verifying it')
@@ -486,7 +474,6 @@ class GalxeAccount:
             await log_long_exc(self.idx, 'Twitter action failed. Trying to verify anyway', e, warning=True)
         return True
 
-# ... (kode setelahnya tetap sama)
     async def _complete_email(self, campaign_id: str, credential) -> bool:
         await self.link_email()
         match credential['credSource']:
