@@ -446,21 +446,21 @@ class GalxeAccount:
                     text = get_query_param(credential['referenceLink'], 'text')
                     tweet_link = text[text.rfind(' ') + 1:]
                     text = text[:text.rfind(' ')]
-                    mentions = self.quote_mention_re.findall(credential['name'].lower())
-                    if mentions:
-                        mentions_number = int(mentions[0].split()[1])
-                        usernames = []
-                        for _ in range(mentions_number):
-                            username = await self.fake_username()
-                            for _ in range(5):
-                                try:
-                                    await self.twitter.get_user_id(username)
-                                except UserNotFound:
-                                    username = await self.fake_username()
-                                    continue
-                                break
-                            usernames.append(username)
-                        text += ''.join([f' @{un}' for un in usernames])
+    
+                    # Selalu tag 3 orang random
+                    usernames = []
+                    for _ in range(3):  # Fix jadi 3
+                        username = await self.fake_username()
+                        for _ in range(5):  # Coba sampe 5 kali buat pastiin valid
+                            try:
+                                await self.twitter.get_user_id(username)
+                            except UserNotFound:
+                                username = await self.fake_username()
+                                continue
+                            break
+                        usernames.append(username)
+                    text += ''.join([f' @{un}' for un in usernames])  # Tambah 3 tag ke teks
+    
                     logger.info(f'{self.idx}) Tweet quote with text: {text}')
                     text += '\n' + tweet_link
                     quote_url = await self.twitter.post_tweet(text)
